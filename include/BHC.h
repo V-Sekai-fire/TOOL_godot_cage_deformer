@@ -99,21 +99,10 @@ namespace BiharmonicCoordinates3D
 		point3d l0_vec = eta - v0; point3d l1_vec = eta - v1;
 		point3d u0 = l0_vec.direction(); point3d u1 = l1_vec.direction();
 
-		/*
-		point3d e = (v1 - v0);
-		mat33d contrib =
-			(2 * (l0 + l1) / ((square_t(l0 + l1) - le * le) * l0 * l1)) * (mat33d::vectorial(e) + mat33d::tensor(point3d::cross(u1, u0), l0 * u1 + l1 * u0))
-			+ (1.0 / (square_t(l0 + l1 - le)) + 1.0 / (square_t(l0 + l1 + le))) * mat33d::tensor(point3d::cross(u1, u0), u1 + u0)
-			; // THE HESSIAN IS SUPPOSED TO BE SYMMETRIC! this version is numerically, but it's tough to understand why...
-			*/
-
-			/**/
 		mat33d contrib =
 			((l0 + l1) / ((square_t(l0 + l1) - le * le) * l0 * l1)) * (MT(point3d::cross(u1, u0), l0 * u1 + l1 * u0))
 			+ 0.5 * (1.0 / (square_t(l0 + l1 - le)) + 1.0 / (square_t(l0 + l1 + le))) * MT(point3d::cross(u1, u0), u1 + u0)
 			;
-
-		// to finish... someday...
 
 		return contrib;
 	}
