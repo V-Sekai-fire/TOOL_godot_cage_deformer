@@ -2390,14 +2390,10 @@ namespace BiharmonicCoordinates3D
 			}
 		}
 
-		std::cout << "so far BiHC_13 do not generate errors" << std::endl;
-
 		C_11 = C_L * (Mass_V - H_Phi_V);
 		C_12 = C_D * (Mass_V - H_Phi_V);
 		C_21 = C_L * (-H_Psi_V);
 		C_22 = C_D * (-H_Psi_V);
-
-		std::cout << "exit computation of BiHC_13 matrices without errors" << std::endl;
 	}
 
 
