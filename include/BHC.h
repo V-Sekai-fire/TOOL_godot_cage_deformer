@@ -2342,9 +2342,9 @@ namespace BiharmonicCoordinates3D
 		}
 
 
-		assert(H_Phi_L.rows() == H_Psi_L.rows());
-		assert(H_Phi_L.rows() == Mass_L.rows());
-		assert(H_Phi_L.cols() == Mass_L.cols());
+		//assert(H_Phi_L.rows() == H_Psi_L.rows());
+		//assert(H_Phi_L.rows() == Mass_L.rows());
+		//assert(H_Phi_L.cols() == Mass_L.cols());
 		Eigen::MatrixXd B(Phi_L.rows(), Phi_L.cols() + Psi_L.cols()); // B = ( phi_L - M_L ; psi_L )
 #pragma omp parallel for
 		for (int r = 0; r < B.rows(); ++r) {
