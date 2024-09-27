@@ -1,0 +1,22 @@
+[remap]
+
+importer="wavefront_obj"
+importer_version=1
+type="Mesh"
+uid="uid://bsvl44754mef6"
+path="res://.godot/imported/cage_deformed_variant_1.obj-1a303488d6529c813fbda810ca9c2bed.mesh"
+
+[deps]
+
+files=["res://.godot/imported/cage_deformed_variant_1.obj-1a303488d6529c813fbda810ca9c2bed.mesh"]
+
+source_file="res://triangle_3d_cage/art/cage_deformed_variant_1.obj"
+dest_files=["res://.godot/imported/cage_deformed_variant_1.obj-1a303488d6529c813fbda810ca9c2bed.mesh", "res://.godot/imported/cage_deformed_variant_1.obj-1a303488d6529c813fbda810ca9c2bed.mesh"]
+
+[params]
+
+generate_tangents=true
+scale_mesh=Vector3(1, 1, 1)
+offset_mesh=Vector3(0, 0, 0)
+optimize_mesh=true
+force_disable_mesh_compression=false
