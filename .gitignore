@@ -49,3 +49,5 @@ compile_commands.json
 .vscode/*
 !.vscode/extensions.json
 .DS_Store
+
+bin/windows/triangle_3d_cage.windows.template_debug.x86_64.dll
