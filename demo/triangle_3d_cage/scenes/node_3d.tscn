@@ -1,6 +1,15 @@
-[gd_scene load_steps=2 format=4 uid="uid://d3bke30es3s3f"]
+[gd_scene load_steps=7 format=4 uid="uid://d3bke30es3s3f"]
 
-[sub_resource type="ArrayMesh" id="ArrayMesh_uipf8"]
+[ext_resource type="ArrayMesh" uid="uid://cxuxhrplsgre1" path="res://triangle_3d_cage/art/cage.obj" id="1_4ivss"]
+[ext_resource type="ArrayMesh" uid="uid://wo1c1qc331rh" path="res://triangle_3d_cage/art/cage_deformed.obj" id="2_8vykt"]
+[ext_resource type="ArrayMesh" uid="uid://c36uihjdkke20" path="res://triangle_3d_cage/art/mesh.obj" id="2_o8o6v"]
+[ext_resource type="ArrayMesh" uid="uid://bsvl44754mef6" path="res://triangle_3d_cage/art/cage_deformed_variant_1.obj" id="3_w6dbe"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_lfqjw"]
+transparency = 1
+albedo_color = Color(1, 1, 1, 0.5)
+
+[sub_resource type="ArrayMesh" id="ArrayMesh_umurc"]
 _surfaces = [{
 "aabb": AABB(-1.78916, -0.72294, -1.99902, 8.41806, 9.70447, 3.99804),
 "format": 34359742471,
@@ -14,6 +23,25 @@ _surfaces = [{
 
 [node name="Node3D" type="Node3D"]
 
+[node name="mesh" type="MeshInstance3D" parent="."]
+mesh = ExtResource("2_o8o6v")
+
+[node name="cage" type="MeshInstance3D" parent="."]
+mesh = ExtResource("1_4ivss")
+skeleton = NodePath("../MeshInstance3D")
+surface_material_override/0 = SubResource("StandardMaterial3D_lfqjw")
+
+[node name="cage_deformed" type="MeshInstance3D" parent="."]
+mesh = ExtResource("2_8vykt")
+skeleton = NodePath("../cage_deformed_variant_1")
+surface_material_override/0 = SubResource("StandardMaterial3D_lfqjw")
+
+[node name="cage_deformed_variant_1" type="MeshInstance3D" parent="."]
+visible = false
+mesh = ExtResource("3_w6dbe")
+skeleton = NodePath("../cage_deformed")
+surface_material_override/0 = SubResource("StandardMaterial3D_lfqjw")
+
 [node name="MeshInstance3D" type="MeshMorph3D" parent="."]
 deformation_switch = true
-mesh = SubResource("ArrayMesh_uipf8")
+mesh = SubResource("ArrayMesh_umurc")
