@@ -1,8 +1,5 @@
 #!/usr/bin/env python
 import os
-import sys
-
-from methods import print_error
 
 
 def normalize_path(val, env):

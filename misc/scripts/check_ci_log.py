@@ -61,7 +61,10 @@ if file_contents.find("Assertion failed") != -1:
 # For now Godot leaks a lot of rendering stuff so for now we just show info
 # about it and this needs to be re-enabled after fixing this memory leaks.
 
-if file_contents.find("were leaked") != -1 or file_contents.find("were never freed") != -1:
+if (
+    file_contents.find("were leaked") != -1
+    or file_contents.find("were never freed") != -1
+):
     print("WARNING: Memory leak was found")
 
 sys.exit(0)

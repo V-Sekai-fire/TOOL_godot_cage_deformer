@@ -42,7 +42,6 @@
 //    Siggraph 2024                                                                                          //
 //-----------------------------------------------------------------------------------------------------------//
 
-
 #include "point3.h"
 #include <godot_cpp/classes/array_mesh.hpp>
 #include <godot_cpp/classes/file_access.hpp>

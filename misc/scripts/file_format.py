@@ -4,7 +4,9 @@
 import sys
 
 if len(sys.argv) < 2:
-    print("Invalid usage of file_format.py, it should be called with a path to one or multiple files.")
+    print(
+        "Invalid usage of file_format.py, it should be called with a path to one or multiple files."
+    )
     sys.exit(1)
 
 BOM = b"\xef\xbb\xbf"
@@ -23,10 +25,19 @@ for file in sys.argv[1:]:
     if original == "":
         continue
 
-    EOL = "\r\n" if file.endswith((".csproj", ".sln", ".bat")) or file.startswith("misc/msvs") else "\n"
+    EOL = (
+        "\r\n"
+        if file.endswith((".csproj", ".sln", ".bat")) or file.startswith("misc/msvs")
+        else "\n"
+    )
     WANTS_BOM = file.endswith((".csproj", ".sln"))
 
-    revamp = EOL.join([line.rstrip("\n\r\t ") for line in original.splitlines(True)]).rstrip(EOL) + EOL
+    revamp = (
+        EOL.join([line.rstrip("\n\r\t ") for line in original.splitlines(True)]).rstrip(
+            EOL
+        )
+        + EOL
+    )
 
     new_raw = revamp.encode(encoding="utf-8")
     if not WANTS_BOM and new_raw.startswith(BOM):

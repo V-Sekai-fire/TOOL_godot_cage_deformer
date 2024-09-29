@@ -6,7 +6,9 @@ import os
 import sys
 
 if len(sys.argv) < 2:
-    print("Invalid usage of dotnet_format.py, it should be called with a path to one or multiple files.")
+    print(
+        "Invalid usage of dotnet_format.py, it should be called with a path to one or multiple files."
+    )
     sys.exit(1)
 
 # Create dummy generated files, if needed.

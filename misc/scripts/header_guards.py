@@ -5,7 +5,9 @@ import sys
 from pathlib import Path
 
 if len(sys.argv) < 2:
-    print("Invalid usage of header_guards.py, it should be called with a path to one or multiple files.")
+    print(
+        "Invalid usage of header_guards.py, it should be called with a path to one or multiple files."
+    )
     sys.exit(1)
 
 changed = []
@@ -31,8 +33,12 @@ for file in sys.argv[1:]:
                 HEADER_CHECK_OFFSET = 0  # There is no Godot header.
                 break
         else:
-            if not sline.startswith("*") and not sline.startswith("/*"):  # Not in the Godot header anymore.
-                HEADER_CHECK_OFFSET = idx + 1  # The include should be two lines below the Godot header.
+            if not sline.startswith("*") and not sline.startswith(
+                "/*"
+            ):  # Not in the Godot header anymore.
+                HEADER_CHECK_OFFSET = (
+                    idx + 1
+                )  # The include should be two lines below the Godot header.
                 break
 
     if HEADER_CHECK_OFFSET < 0:
@@ -98,7 +104,9 @@ for file in sys.argv[1:]:
     objc = False
 
     for idx, line in enumerate(lines):
-        if line.startswith("// #import"):  # Some dummy obj-c files only have commented out import lines.
+        if line.startswith(
+            "// #import"
+        ):  # Some dummy obj-c files only have commented out import lines.
             objc = True
             break
         if not line.startswith("#"):

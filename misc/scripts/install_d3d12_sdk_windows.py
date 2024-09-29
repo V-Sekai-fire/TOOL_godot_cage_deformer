@@ -41,7 +41,9 @@ pix_folder = os.path.join(deps_folder, "pix")
 # After updating this, remember to change the default value of the `rendering/rendering_device/d3d12/agility_sdk_version`
 # project setting to match the minor version (e.g. for `1.613.3`, it should be `613`).
 agility_sdk_version = "1.613.3"
-agility_sdk_archive = os.path.join(deps_folder, f"Agility_SDK_{agility_sdk_version}.nupkg")
+agility_sdk_archive = os.path.join(
+    deps_folder, f"Agility_SDK_{agility_sdk_version}.nupkg"
+)
 agility_sdk_folder = os.path.join(deps_folder, "agility_sdk")
 
 # Create dependencies folder
@@ -80,9 +82,14 @@ print("\x1b[1m[2/3] WinPixEventRuntime\x1b[0m")
 if os.path.isfile(pix_archive):
     os.remove(pix_archive)
 print(f"Downloading WinPixEventRuntime {pix_version} ...")
-urllib.request.urlretrieve(f"https://www.nuget.org/api/v2/package/WinPixEventRuntime/{pix_version}", pix_archive)
+urllib.request.urlretrieve(
+    f"https://www.nuget.org/api/v2/package/WinPixEventRuntime/{pix_version}",
+    pix_archive,
+)
 if os.path.exists(pix_folder):
-    print(f"Removing existing local WinPixEventRuntime installation in {pix_folder} ...")
+    print(
+        f"Removing existing local WinPixEventRuntime installation in {pix_folder} ..."
+    )
     shutil.rmtree(pix_folder)
 print(f"Extracting WinPixEventRuntime {pix_version} to {pix_folder} ...")
 shutil.unpack_archive(pix_archive, pix_folder, "zip")
@@ -103,7 +110,9 @@ if has_mingw:
     )
     os.chdir(cwd)
 else:
-    print("MinGW wasn't found, so only MSVC support is provided for WinPixEventRuntime.")
+    print(
+        "MinGW wasn't found, so only MSVC support is provided for WinPixEventRuntime."
+    )
 print(f"WinPixEventRuntime {pix_version} installed successfully.\n")
 
 # DirectX 12 Agility SDK
@@ -112,16 +121,25 @@ if os.path.isfile(agility_sdk_archive):
     os.remove(agility_sdk_archive)
 print(f"Downloading DirectX 12 Agility SDK {agility_sdk_version} ...")
 urllib.request.urlretrieve(
-    f"https://www.nuget.org/api/v2/package/Microsoft.Direct3D.D3D12/{agility_sdk_version}", agility_sdk_archive
+    f"https://www.nuget.org/api/v2/package/Microsoft.Direct3D.D3D12/{agility_sdk_version}",
+    agility_sdk_archive,
 )
 if os.path.exists(agility_sdk_folder):
-    print(f"Removing existing local DirectX 12 Agility SDK installation in {agility_sdk_folder} ...")
+    print(
+        f"Removing existing local DirectX 12 Agility SDK installation in {agility_sdk_folder} ..."
+    )
     shutil.rmtree(agility_sdk_folder)
-print(f"Extracting DirectX 12 Agility SDK {agility_sdk_version} to {agility_sdk_folder} ...")
+print(
+    f"Extracting DirectX 12 Agility SDK {agility_sdk_version} to {agility_sdk_folder} ..."
+)
 shutil.unpack_archive(agility_sdk_archive, agility_sdk_folder, "zip")
 os.remove(agility_sdk_archive)
 print(f"DirectX 12 Agility SDK {agility_sdk_version} installed successfully.\n")
 
 # Complete message
-print(f'\x1b[92mAll Direct3D 12 SDK components were installed to "{deps_folder}" successfully!\x1b[0m')
-print('\x1b[92mYou can now build Godot with Direct3D 12 support enabled by running "scons d3d12=yes".\x1b[0m')
+print(
+    f'\x1b[92mAll Direct3D 12 SDK components were installed to "{deps_folder}" successfully!\x1b[0m'
+)
+print(
+    '\x1b[92mYou can now build Godot with Direct3D 12 support enabled by running "scons d3d12=yes".\x1b[0m'
+)
