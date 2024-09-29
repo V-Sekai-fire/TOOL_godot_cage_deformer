@@ -1,3 +1,6 @@
+// Copyright (c) 2014-present K. S. Ernest (iFire) Lee.
+// SPDX-License-Identifier: MIT
+
 #include "mesh_morph_3d.h"
 #include "BHC.h"
 #include "BasicIO.h"

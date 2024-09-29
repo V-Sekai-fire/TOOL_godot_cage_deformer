@@ -1,3 +1,6 @@
+// Copyright (c) 2014-present K. S. Ernest (iFire) Lee.
+// SPDX-License-Identifier: MIT
+
 #ifndef MESH_MORPH_3D_H
 #define MESH_MORPH_3D_H
 
