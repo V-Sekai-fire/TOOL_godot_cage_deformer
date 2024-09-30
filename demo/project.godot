@@ -16,4 +16,4 @@ config/icon="res://icon.svg"
 
 [editor_plugins]
 
-enabled=PackedStringArray("res://addons/obj_exporter/plugin.cfg")
+enabled=PackedStringArray()
