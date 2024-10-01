@@ -4,7 +4,7 @@ on:
   push:
 
 env:
-  LIBNAME: example
+  LIBNAME: triangle_3d_cage
 
 jobs:
   build:
