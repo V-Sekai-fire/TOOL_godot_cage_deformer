@@ -42,12 +42,11 @@
 
 #include "mesh_morph_3d.h"
 #include "BHC.h"
-#include "BasicIO.h"
 #include "point3.h"
 #include <Eigen/Dense>
 #include <godot_cpp/classes/array_mesh.hpp>
+#include <godot_cpp/classes/mesh_data_tool.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
-#include <iostream>
 
 using namespace godot;
 
@@ -58,17 +57,17 @@ void MeshMorph3D::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_gamma_D_13BC"), &MeshMorph3D::get_gamma_D_13BC);
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "gamma"), "set_gamma_D_13BC", "get_gamma_D_13BC");
 
-	ClassDB::bind_method(D_METHOD("set_cage_mesh_path", "path"), &MeshMorph3D::set_cage_mesh_path);
-	ClassDB::bind_method(D_METHOD("get_cage_mesh_path"), &MeshMorph3D::get_cage_mesh_path);
-	ADD_PROPERTY(PropertyInfo(Variant::STRING, "cage_mesh_path"), "set_cage_mesh_path", "get_cage_mesh_path");
+	ClassDB::bind_method(D_METHOD("set_cage_mesh", "mesh"), &MeshMorph3D::set_cage_mesh);
+    ClassDB::bind_method(D_METHOD("get_cage_mesh"), &MeshMorph3D::get_cage_mesh);
+    ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "cage_mesh", PROPERTY_HINT_RESOURCE_TYPE, "ArrayMesh"), "set_cage_mesh", "get_cage_mesh");
 
-	ClassDB::bind_method(D_METHOD("set_cage_deformed_path", "path"), &MeshMorph3D::set_cage_deformed_path);
-	ClassDB::bind_method(D_METHOD("get_cage_deformed_path"), &MeshMorph3D::get_cage_deformed_path);
-	ADD_PROPERTY(PropertyInfo(Variant::STRING, "cage_deformed_path"), "set_cage_deformed_path", "get_cage_deformed_path");
+    ClassDB::bind_method(D_METHOD("set_cage_deformed", "path"), &MeshMorph3D::set_cage_deformed);
+    ClassDB::bind_method(D_METHOD("get_cage_deformed"), &MeshMorph3D::get_cage_deformed);
+    ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "cage_deformed", PROPERTY_HINT_RESOURCE_TYPE, "ArrayMesh"), "set_cage_deformed", "get_cage_deformed");
 
-	ClassDB::bind_method(D_METHOD("set_mesh_path", "path"), &MeshMorph3D::set_mesh_path);
-	ClassDB::bind_method(D_METHOD("get_mesh_path"), &MeshMorph3D::get_mesh_path);
-	ADD_PROPERTY(PropertyInfo(Variant::STRING, "mesh_path"), "set_mesh_path", "get_mesh_path");
+    ClassDB::bind_method(D_METHOD("set_source_mesh", "mesh"), &MeshMorph3D::set_source_mesh);
+    ClassDB::bind_method(D_METHOD("get_source_mesh"), &MeshMorph3D::get_source_mesh);
+    ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "source_mesh", PROPERTY_HINT_RESOURCE_TYPE, "ArrayMesh"), "set_source_mesh", "get_source_mesh");
 
 	ClassDB::bind_method(D_METHOD("set_deformation_switch", "value"), &MeshMorph3D::set_deformation_switch);
 	ClassDB::bind_method(D_METHOD("get_deformation_switch"), &MeshMorph3D::get_deformation_switch);
@@ -82,20 +81,23 @@ MeshMorph3D::~MeshMorph3D() {
 }
 
 void MeshMorph3D::apply_deformation_to_children() {
-	// Load original cage and mesh data
+	if (cage_mesh.is_null()) {
+		UtilityFunctions::printerr("Cage mesh is not available.");
+		return;
+	}
 	std::vector<point3d> cage_vertices;
 	std::vector<std::vector<unsigned int>> cage_triangles;
-	if (!OBJIO::open(cage_mesh_path.utf8().get_data(), cage_vertices, cage_triangles, true)) {
-		std::cerr << "Failed to load cage model from " << cage_mesh_path.utf8().get_data() << std::endl;
-		return;
-	}
-
+    extract_mesh_data(cage_mesh,
+		cage_vertices,
+		cage_triangles,
+		true);
+	UtilityFunctions::print("Cage model loaded successfully.");
 	std::vector<point3d> mesh_vertices;
 	std::vector<std::vector<unsigned int>> mesh_triangles;
-	if (!OBJIO::open(mesh_path.utf8().get_data(), mesh_vertices, mesh_triangles, true)) {
-		std::cerr << "Failed to load mesh model from " << mesh_path.utf8().get_data() << std::endl;
-		return;
-	}
+	extract_mesh_data(source_mesh,
+		mesh_vertices,
+		mesh_triangles,
+		true);
 	UtilityFunctions::print(String("Vertex count in original mesh: ") + String::num_int64(mesh_vertices.size()));
 
 	{
@@ -144,7 +146,6 @@ void MeshMorph3D::apply_deformation_to_children() {
 		mesh_vertices = new_mesh_vertices;
 		mesh_triangles = new_mesh_triangles;
 	}
-
 	// Compute (1,3)-regularized matrices
 	Eigen::MatrixXd ConstrainedBiH_13_C11;
 	Eigen::MatrixXd ConstrainedBiH_13_C12;
@@ -182,12 +183,11 @@ void MeshMorph3D::apply_deformation_to_children() {
 				ConstrainedBiH_13_C11, ConstrainedBiH_13_C12, ConstrainedBiH_13_C21, ConstrainedBiH_13_C22,
 				BHConstrainedC_13_phi[p_idx], BHConstrainedC_13_psi[p_idx]);
 	}
-
 	std::vector<point3d> cage_modified_vertices;
-	if (!OBJIO::open(cage_deformed_path.utf8().get_data(), cage_modified_vertices)) {
-		std::cerr << "Failed to load deformed cage model from " << cage_deformed_path.utf8().get_data() << std::endl;
-		return;
-	}
+    extract_mesh_data(cage_deformed,
+		cage_modified_vertices,
+		cage_triangles,
+		false);
 	// Compute cage triangle normals
 	std::vector<point3d> cage_triangle_normals(cage_triangles.size(), point3d(0, 0, 0));
 	for (unsigned int tIt = 0; tIt < cage_triangles.size(); ++tIt) {
@@ -210,18 +210,20 @@ void MeshMorph3D::apply_deformation_to_children() {
 		}
 		mesh_vertices[v] = pos;
 	}
-	UtilityFunctions::print("Mesh deformation updated from cage deformation.");
-	UtilityFunctions::print(String("Vertex count in deformed mesh: ") + String::num_int64(mesh_vertices.size()));
-
+    UtilityFunctions::print("Mesh deformation updated from cage deformation.");
 	Ref<SurfaceTool> st = memnew(SurfaceTool);
 	st->begin(Mesh::PRIMITIVE_TRIANGLES);
-	for (const auto &triangle : mesh_triangles) {
-		st->add_vertex(godot::Vector3(mesh_vertices[triangle[0]][0], mesh_vertices[triangle[0]][1], -mesh_vertices[triangle[0]][2]));
-		st->add_vertex(godot::Vector3(mesh_vertices[triangle[1]][0], mesh_vertices[triangle[1]][1], -mesh_vertices[triangle[1]][2]));
-		st->add_vertex(godot::Vector3(mesh_vertices[triangle[2]][0], mesh_vertices[triangle[2]][1], -mesh_vertices[triangle[2]][2]));
+	for (const auto& vertex : mesh_vertices) {
+		Vector3 godot_vertex(vertex.x(), vertex.z(), -vertex.y());
+		st->add_vertex(godot_vertex);
 	}
-	st->index();
+	for (const auto& triangle : mesh_triangles) {
+		for (int i = triangle.size() - 1; i >= 0; --i) {
+			st->add_index(triangle[i]);
+		}
+	}
 	st->generate_normals();
+	st->generate_tangents();
 	set_mesh(st->commit());
 }
 
@@ -293,26 +295,50 @@ void godot::MeshMorph3D::set_deformation_switch(bool value) {
 	}
 }
 
-String godot::MeshMorph3D::get_mesh_path() const {
-	return mesh_path;
+Ref<ArrayMesh> godot::MeshMorph3D::get_cage_deformed() const {
+	return cage_deformed;
 }
 
-void godot::MeshMorph3D::set_mesh_path(String path) {
-	mesh_path = path;
+void godot::MeshMorph3D::set_cage_deformed(Ref<ArrayMesh> p_mesh) {
+	cage_deformed = p_mesh;
 }
 
-String godot::MeshMorph3D::get_cage_deformed_path() const {
-	return cage_deformed_path;
+Ref<ArrayMesh> godot::MeshMorph3D::get_cage_mesh() const {
+	return cage_mesh;
 }
 
-void godot::MeshMorph3D::set_cage_deformed_path(String path) {
-	cage_deformed_path = path;
+void godot::MeshMorph3D::set_cage_mesh(Ref<ArrayMesh> p_mesh) {
+	cage_mesh = p_mesh;
 }
 
-String godot::MeshMorph3D::get_cage_mesh_path() const {
-	return cage_mesh_path;
-}
+void godot::MeshMorph3D::extract_mesh_data(const Ref<ArrayMesh> mesh,
+		std::vector<point3d> &vertices,
+		std::vector<std::vector<unsigned int>> &triangles,
+		bool include_triangles) {
+	if (mesh.is_null()) {
+		UtilityFunctions::printerr("Mesh is not available.", __FUNCTION__, __FILE__, __LINE__);
+		return;
+	}
+	godot::Ref<godot::MeshDataTool> mdt = memnew(MeshDataTool);
+	mdt->create_from_surface(mesh, 0);
 
-void godot::MeshMorph3D::set_cage_mesh_path(String path) {
-	cage_mesh_path = path;
+	int vertex_count = mdt->get_vertex_count();
+	for (int i = 0; i < vertex_count; ++i) {
+		godot::Vector3 vertex = mdt->get_vertex(i);
+		std::swap(vertex.y, vertex.z);
+		vertex.y = -vertex.y;
+		vertices.push_back(vertex);
+	}
+
+	if (include_triangles) {
+		int face_count = mdt->get_face_count();
+		for (int i = 0; i < face_count; ++i) {
+			std::vector<unsigned int> triangle;
+			triangle.push_back(mdt->get_face_vertex(i, 0));
+			triangle.push_back(mdt->get_face_vertex(i, 2));
+			triangle.push_back(mdt->get_face_vertex(i, 1));
+			triangles.push_back(triangle);
+		}
+	}
+	UtilityFunctions::print("Mesh data extracted successfully.");
 }

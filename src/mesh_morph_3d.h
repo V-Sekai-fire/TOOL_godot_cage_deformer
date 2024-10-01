@@ -57,9 +57,9 @@ class MeshMorph3D : public MeshInstance3D {
 	GDCLASS(MeshMorph3D, MeshInstance3D)
 private:
 	float gamma_D_13BC = 1.0;
-	String cage_mesh_path = "triangle_3d_cage/art/cage.obj";
-	String cage_deformed_path = "triangle_3d_cage/art/cage_deformed.obj";
-	String mesh_path = "triangle_3d_cage/art/mesh.obj";
+	Ref<ArrayMesh> cage_mesh;
+	Ref<ArrayMesh> cage_deformed;
+	Ref<ArrayMesh> source_mesh;
 	bool deformation_switch = false;
 
 	std::vector<point3d> convert_godot_array_to_vector(const Array &godot_array);
@@ -67,24 +67,25 @@ private:
 	const std::vector<std::vector<unsigned int>> extract_triangles(Ref<ArrayMesh> mesh);
 	std::vector<point3d> calculate_normals(Ref<ArrayMesh> mesh);
 	std::vector<point3d> apply_deformation(const std::vector<point3d> &original_vertices, const std::vector<std::vector<unsigned int>> &cage_triangles, const std::vector<point3d> &cage_vertices, const std::vector<point3d> &cage_modified_vertices, std::vector<point3d> &cage_triangle_normals);
-
+	void extract_mesh_data(const Ref<ArrayMesh> mesh,
+			std::vector<point3d> &vertices,
+			std::vector<std::vector<unsigned int>> &triangles,
+			bool include_triangles = true);
+	void apply_deformation_to_children();
 protected:
 	static void _bind_methods();
 
 public:
 	MeshMorph3D();
 	~MeshMorph3D();
-
-	void _init();
-	void apply_deformation_to_children();
 	void set_gamma_D_13BC(float value) { gamma_D_13BC = value; }
 	float get_gamma_D_13BC() const { return gamma_D_13BC; }
-	void set_cage_mesh_path(String path);
-	String get_cage_mesh_path() const;
-	void set_cage_deformed_path(String path);
-	String get_cage_deformed_path() const;
-	void set_mesh_path(String path);
-	String get_mesh_path() const;
+	void set_cage_mesh(Ref<ArrayMesh> path);
+	Ref<ArrayMesh> get_cage_mesh() const;
+	void set_cage_deformed(Ref<ArrayMesh> path);
+	Ref<ArrayMesh> get_cage_deformed() const;
+	void set_source_mesh(Ref<ArrayMesh> p_mesh) { source_mesh = p_mesh; }
+	Ref<ArrayMesh> get_source_mesh() const { return source_mesh; }
 	void set_deformation_switch(bool value);
 	bool get_deformation_switch() const;
 };
