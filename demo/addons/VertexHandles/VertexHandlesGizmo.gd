@@ -61,35 +61,16 @@ func _set_handle(gizmo,id,secondary,camera,point):
 		
 	p = p[0]
 	
-	#var sg = [ gi * ray_from, gi * (ray_from + ray_dir * 16384) ]
-	
-	#print("Set")
-	
 	var d = p.distance_to(node3d.global_position)
 	
 	node3d.points[0][id] = p
 	
-	'''match id:
-		0:
-			if(d < 0.001):
-				d = 0.001
-
-			node3d.radius = d
-		1:
-			if(d < 0.001):
-				d = 0.001
-				
-			node3d.width = d - node3d.radius'''
-	
-	_redraw(gizmo)
+	_redraw(gizmo)	
 
 func _commit_handle(gizmo,id,secondary,restore,cancel):
 	var node3d : Node3D = gizmo.get_node_3d()
-	
-	match id:
-		0:
-			#print("commit")
-			pass
+	node3d._update_mesh()
+
 
 func _redraw(gizmo):
 	gizmo.clear()
