@@ -65,11 +65,11 @@ func _set_handle(gizmo,id,secondary,camera,point):
 	
 	node3d.points[0][id] = p
 	
-	_redraw(gizmo)	
+	_redraw(gizmo)
+	node3d._update_mesh()
 
 func _commit_handle(gizmo,id,secondary,restore,cancel):
 	var node3d : Node3D = gizmo.get_node_3d()
-	node3d._update_mesh()
 
 
 func _redraw(gizmo):
