@@ -43,13 +43,13 @@ func _update_mesh():
 			surface_arrays[i][Mesh.ARRAY_VERTEX] = PackedVector3Array( points[i] )
 			
 			mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, surface_arrays[i])
+		get_node("../../MeshMorph3D").set("deformation_switch", false)
+		get_node("../../MeshMorph3D").set("deformation_switch", true)
 
 func _set_points(value):
 	print(value)
 	points = value
 	print("settingsetting")
-	
-	
 
 
 func _to_array_mesh(_mesh:Mesh) -> ArrayMesh:
