@@ -74,8 +74,8 @@ func _commit_handle(gizmo,id,secondary,restore,cancel):
 
 func _redraw(gizmo):
 	gizmo.clear()
-	
 	var node3d : Node3D = gizmo.get_node_3d()
+	node3d._ready()
 	#var mesh : Mesh = node3d.mesh
 	
 	#print(mesh)
