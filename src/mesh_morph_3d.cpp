@@ -114,14 +114,14 @@ void MeshMorph3D::apply_deformation_to_children() {
 		cage_vertices,
 		cage_triangles,
 		true);
-	UtilityFunctions::print("Cage model loaded successfully.");
+	// UtilityFunctions::print("Cage model loaded successfully.");
 	std::vector<point3d> mesh_vertices;
 	std::vector<std::vector<unsigned int>> mesh_triangles;
 	extract_mesh_data(source_mesh,
 		mesh_vertices,
 		mesh_triangles,
 		true);
-	UtilityFunctions::print(String("Vertex count in original mesh: ") + String::num_int64(mesh_vertices.size()));
+	// UtilityFunctions::print(String("Vertex count in original mesh: ") + String::num_int64(mesh_vertices.size()));
 
 	{
 		Ref<ArrayMesh> array_mesh = memnew(ArrayMesh);
@@ -180,14 +180,14 @@ void MeshMorph3D::apply_deformation_to_children() {
 			cage_triangles, cage_vertices,
 			ConstrainedBiH_13_C11, ConstrainedBiH_13_C12, ConstrainedBiH_13_C21, ConstrainedBiH_13_C22,
 			gamma_D_13BC);
-	UtilityFunctions::print("(1,3)-regularized matrices computed successfully.");
+	// UtilityFunctions::print("(1,3)-regularized matrices computed successfully.");
 	BHC_h_phi.resize(mesh_vertices.size());
 	BHC_bh_phi.resize(mesh_vertices.size());
 	BHC_h_psi.resize(mesh_vertices.size());
 	BHC_bh_psi.resize(mesh_vertices.size());
 
 	// Compute unconstrained coordinates
-	UtilityFunctions::print("Compute (1,3)-regularized BHC ");
+	// UtilityFunctions::print("Compute (1,3)-regularized BHC ");
 	BHConstrainedC_13_phi.resize(mesh_vertices.size());
 	BHConstrainedC_13_psi.resize(mesh_vertices.size());
 
@@ -197,7 +197,7 @@ void MeshMorph3D::apply_deformation_to_children() {
 				cage_triangles, cage_vertices,
 				BHC_h_phi[p_idx], BHC_h_psi[p_idx], BHC_bh_phi[p_idx], BHC_bh_psi[p_idx]);
 	}
-	UtilityFunctions::print("Unconstrained coordinates computed.");
+	// UtilityFunctions::print("Unconstrained coordinates computed.");
 
 	// Compute (1,3)-regularized blending from unconstrained biharmonics
 	for (int p_idx = 0; p_idx < mesh_vertices.size(); ++p_idx) {
@@ -219,7 +219,7 @@ void MeshMorph3D::apply_deformation_to_children() {
 				cage_modified_vertices[t[2]] - cage_modified_vertices[t[0]])
 											 .direction();
 	}
-	UtilityFunctions::print("Cage triangle normals computed.");
+	// UtilityFunctions::print("Cage triangle normals computed.");
 
 	// Apply deformation to mesh vertices based on computed coordinates and normals
 #pragma omp parallel for
@@ -233,7 +233,7 @@ void MeshMorph3D::apply_deformation_to_children() {
 		}
 		mesh_vertices[v] = pos;
 	}
-    UtilityFunctions::print("Mesh deformation updated from cage deformation.");
+    // UtilityFunctions::print("Mesh deformation updated from cage deformation.");
 	Ref<SurfaceTool> st = memnew(SurfaceTool);
 	st->begin(Mesh::PRIMITIVE_TRIANGLES);
 	for (const auto& vertex : mesh_vertices) {
@@ -352,7 +352,7 @@ void godot::MeshMorph3D::extract_mesh_data(const Ref<ArrayMesh> mesh,
 			triangles.push_back(triangle);
 		}
 	}
-	UtilityFunctions::print("Mesh data extracted successfully.");
+	// UtilityFunctions::print("Mesh data extracted successfully.");
 }
 
 void godot::MeshMorph3D::set_cage_mesh_from_path(NodePath p_path) {

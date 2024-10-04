@@ -2362,7 +2362,13 @@ void computeConstrainedBiharmonicMatrices_13(
 	Eigen::MatrixXd H_Psi_V(n_Dirichlet_constraints, cage_triangles.size());
 	Eigen::MatrixXd BH_Psi_V(n_Dirichlet_constraints, cage_triangles.size());
 
-	Eigen::MatrixXd Mass_V = Eigen::MatrixXd::Zero(n_Dirichlet_constraints, cage_vertices.size());
+	Eigen::MatrixXd Mass_V(n_Dirichlet_constraints, cage_vertices.size());
+#pragma omp parallel for
+	for (int i = 0; i < Mass_V.rows(); ++i) {
+		for (int j = 0; j < Mass_V.cols(); ++j) {
+			Mass_V(i, j) = 0.0;
+		}
+	}
 
 	for (int v1 = 0; v1 < n_Dirichlet_constraints_on_cage_vertices; ++v1) {
 		Mass_V(v1, v1) = 1.0;
