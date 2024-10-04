@@ -29,6 +29,7 @@ compile_commands.json
 *.os
 *.so
 *.obj
+!demo/**/*.obj
 *.bc
 *.pyc
 *.dblite
