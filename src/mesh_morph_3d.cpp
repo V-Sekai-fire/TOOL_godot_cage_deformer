@@ -233,12 +233,71 @@ void MeshMorph3D::apply_deformation_to_children() {
 		}
 		mesh_vertices[v] = pos;
 	}
+	std::vector<Vertex> vertices = extract_mesh_vertices(source_mesh);
     UtilityFunctions::print("Mesh deformation updated from cage deformation.");
 	Ref<SurfaceTool> st = memnew(SurfaceTool);
+	int max_bone_weights = 0;
+	for (const auto& vertex : vertices) {
+		if (vertex.bone_weights.size() > max_bone_weights) {
+			max_bone_weights = vertex.bone_weights.size();
+		}
+	}
+	if (max_bone_weights > 4) {
+		st->set_skin_weight_count(SurfaceTool::SKIN_8_WEIGHTS);
+	} else {
+		st->set_skin_weight_count(SurfaceTool::SKIN_4_WEIGHTS);
+	}
 	st->begin(Mesh::PRIMITIVE_TRIANGLES);
-	for (const auto& vertex : mesh_vertices) {
-		Vector3 godot_vertex(vertex.x(), vertex.z(), -vertex.y());
+	auto it_mesh_vertices = mesh_vertices.begin();
+	for (const MeshMorph3D::Vertex& vertex : vertices) {
+		if (it_mesh_vertices == mesh_vertices.end()) {
+			break;
+		}
+		if (!vertex.normal.is_zero_approx()) {
+			Vector3 godot_normal(vertex.normal.x, vertex.normal.z, -vertex.normal.y);
+			st->set_normal(godot_normal);
+		}
+		if (vertex.tangent != Vector4()) {
+			Plane godot_tangent(vertex.tangent.x, vertex.tangent.z, -vertex.tangent.y, vertex.tangent.w);
+			st->set_tangent(godot_tangent);
+		}
+		if (vertex.color != Color()) {
+			st->set_color(vertex.color);
+		}
+		if (vertex.uv != Vector2()) {
+			st->set_uv(vertex.uv);
+		}
+		if (vertex.uv2 != Vector2()) {
+			st->set_uv2(vertex.uv2);
+		}
+		if (vertex.custom0 != Color()) {
+			SurfaceTool::CustomFormat format = SurfaceTool::CustomFormat::CUSTOM_RGBA_FLOAT;
+			st->set_custom_format(0, format);
+			st->set_custom(0, vertex.custom0);
+		}
+		if (vertex.custom1 != Color()) {
+			SurfaceTool::CustomFormat format = SurfaceTool::CustomFormat::CUSTOM_RGBA_FLOAT;
+			st->set_custom_format(1, format);
+			st->set_custom(1, vertex.custom1);
+		}
+		if (vertex.custom2 != Color()) {
+			SurfaceTool::CustomFormat format = SurfaceTool::CustomFormat::CUSTOM_RGBA_FLOAT;
+			st->set_custom_format(2, format);
+			st->set_custom(2, vertex.custom2);
+		}
+		if (vertex.custom3 != Color()) {
+			SurfaceTool::CustomFormat format = SurfaceTool::CustomFormat::CUSTOM_RGBA_FLOAT;
+			st->set_custom_format(3, format);
+			st->set_custom(3, vertex.custom3);
+		}
+		if (!vertex.bone_indices.is_empty() && !vertex.bone_weights.is_empty()) {
+			st->set_bones(vertex.bone_indices);
+			st->set_weights(vertex.bone_weights);
+		}		
+		const auto& mesh_vertex = *it_mesh_vertices;
+		Vector3 godot_vertex(mesh_vertex.x(), mesh_vertex.z(), -mesh_vertex.y());
 		st->add_vertex(godot_vertex);
+		++it_mesh_vertices;
 	}
 	for (const auto& triangle : mesh_triangles) {
 		for (int i = triangle.size() - 1; i >= 0; --i) {
@@ -259,33 +318,33 @@ std::vector<point3d> godot::MeshMorph3D::convert_godot_array_to_vector(const Arr
 	return vec;
 }
 
-std::vector<point3d> godot::MeshMorph3D::extract_vertices(Ref<ArrayMesh> mesh) {
-	std::vector<point3d> vertices;
-	Array arrays = mesh->surface_get_arrays(0);
-	PackedVector3Array vertex_array = arrays[Mesh::ARRAY_VERTEX];
-	PackedInt32Array index_array = arrays[Mesh::ARRAY_INDEX];
-	if (index_array.is_empty()) {
-		for (int i = 0; i < vertex_array.size(); ++i) {
-			Vector3 godot_vertex = vertex_array[i];
-			// Swapping Y and Z coordinates, and negating the new Y
-			point3d converted_vertex(godot_vertex.x, -godot_vertex.z, godot_vertex.y);
-			vertices.push_back(converted_vertex);
-		}
-	} else {
-		for (int i = 0; i < index_array.size(); ++i) {
-			int index = index_array[i];
-			if (index >= 0 && index < vertex_array.size()) {
-				Vector3 godot_vertex = vertex_array[index];
-				// Swapping Y and Z coordinates, and negating the new Y
-				point3d converted_vertex(godot_vertex.x, -godot_vertex.z, godot_vertex.y);
-				vertices.push_back(converted_vertex);
-			} else {
-				UtilityFunctions::printerr("ERROR: Index out of bounds in the vertex array.");
-				return std::vector<point3d>();
-			}
-		}
-	}
-	return vertices;
+std::vector<MeshMorph3D::Vertex> godot::MeshMorph3D::extract_mesh_vertices(Ref<ArrayMesh> mesh) {
+    std::vector<Vertex> vertices;
+    Array arrays = mesh->surface_get_arrays(0);
+
+    PackedVector3Array positions = arrays[Mesh::ARRAY_VERTEX];
+    PackedVector3Array normals = arrays[Mesh::ARRAY_NORMAL];
+    PackedVector4Array tangents = arrays[Mesh::ARRAY_TANGENT];
+    PackedColorArray colors = arrays[Mesh::ARRAY_COLOR];
+    PackedVector2Array uvs = arrays[Mesh::ARRAY_TEX_UV];
+    PackedVector2Array uv2s = arrays[Mesh::ARRAY_TEX_UV2];
+    PackedInt32Array bone_indices = arrays[Mesh::ARRAY_BONES];
+    PackedFloat32Array bone_weights = arrays[Mesh::ARRAY_WEIGHTS];
+    Color custom0, custom1, custom2, custom3;
+	for (int i = 0; i < positions.size(); ++i) {
+		vertices.push_back(Vertex(
+			positions[i],
+			normals.size() > i ? normals[i] : Vector3(),
+			tangents.size() > i ? tangents[i] : Vector4(),
+			colors.size() > i ? colors[i] : Color(),
+			uvs.size() > i ? uvs[i] : Vector2(),
+			uv2s.size() > i ? uv2s[i] : Vector2(),
+			custom0, custom1, custom2, custom3,
+			bone_indices,
+			bone_weights
+		));
+    }
+    return vertices;
 }
 
 const std::vector<std::vector<unsigned int>> godot::MeshMorph3D::extract_triangles(Ref<ArrayMesh> mesh) {

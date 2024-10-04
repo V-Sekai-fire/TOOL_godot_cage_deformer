@@ -75,6 +75,43 @@ protected:
 	static void _bind_methods();
 
 public:
+	struct Vertex {
+		godot::Vector3 position;       // Vertex position
+		godot::Vector3 normal;         // Normal vector
+		godot::Vector4 tangent;  // Tangent vector and binormal direction
+		godot::Color color;            // Vertex color
+		godot::Vector2 uv;             // Primary UV coordinates
+		godot::Vector2 uv2;            // Secondary UV coordinates
+		Color custom0;    // Custom channel 0
+		Color custom1;    // Custom channel 1
+		Color custom2;    // Custom channel 2
+		Color custom3;    // Custom channel 3
+		PackedInt32Array bone_indices; // Bone indices
+		PackedFloat32Array bone_weights; // Bone weights
+		Vertex(
+			godot::Vector3 pos,
+			godot::Vector3 norm,
+			godot::Vector4 tan,
+			godot::Color col,
+			godot::Vector2 texture_uv,
+			godot::Vector2 texture_uv2,
+			const Color& cust0,
+			const Color& cust1,
+			const Color& cust2,
+			const Color& cust3,
+			const PackedInt32Array& bones,
+			const PackedFloat32Array& weights
+		) : position(pos), normal(norm), tangent(tan), color(col),
+			uv(texture_uv), uv2(texture_uv2), custom0(cust0), custom1(cust1),
+			custom2(cust2), custom3(cust3), bone_indices(bones), bone_weights(weights) {}
+
+		Vertex() : position(godot::Vector3()), normal(godot::Vector3()),
+				tangent({0, 0, 0, 1}), color(godot::Color()),
+				uv(godot::Vector2()), uv2(godot::Vector2()),
+				custom0(), custom1(), custom2(), custom3(),
+				bone_indices(), bone_weights() {}
+	};
+	std::vector<MeshMorph3D::Vertex> extract_mesh_vertices(Ref<ArrayMesh> mesh);
 	MeshMorph3D();
 	~MeshMorph3D();
 	void set_gamma_D_13BC(float value) { gamma_D_13BC = value; }
