@@ -57,17 +57,17 @@ void MeshMorph3D::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_gamma_D_13BC"), &MeshMorph3D::get_gamma_D_13BC);
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "gamma"), "set_gamma_D_13BC", "get_gamma_D_13BC");
 
-	ClassDB::bind_method(D_METHOD("set_cage_mesh", "mesh"), &MeshMorph3D::set_cage_mesh);
-    ClassDB::bind_method(D_METHOD("get_cage_mesh"), &MeshMorph3D::get_cage_mesh);
-    ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "cage_mesh", PROPERTY_HINT_RESOURCE_TYPE, "ArrayMesh"), "set_cage_mesh", "get_cage_mesh");
+    ClassDB::bind_method(D_METHOD("set_cage_mesh_from_path", "path"), &MeshMorph3D::set_cage_mesh_from_path);
+    ClassDB::bind_method(D_METHOD("get_cage_mesh_from_path"), &MeshMorph3D::get_cage_mesh_from_path);
+    ADD_PROPERTY(PropertyInfo(Variant::NODE_PATH, "cage_path"), "set_cage_mesh_from_path", "get_cage_mesh_from_path");
+	
+    ClassDB::bind_method(D_METHOD("set_cage_deformed_from_path", "path"), &MeshMorph3D::set_cage_deformed_from_path);
+    ClassDB::bind_method(D_METHOD("get_cage_deformed_from_path"), &MeshMorph3D::get_cage_deformed_from_path);
+    ADD_PROPERTY(PropertyInfo(Variant::NODE_PATH, "cage_deformed_path"), "set_cage_deformed_from_path", "get_cage_deformed_from_path");
 
-    ClassDB::bind_method(D_METHOD("set_cage_deformed", "path"), &MeshMorph3D::set_cage_deformed);
-    ClassDB::bind_method(D_METHOD("get_cage_deformed"), &MeshMorph3D::get_cage_deformed);
-    ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "cage_deformed", PROPERTY_HINT_RESOURCE_TYPE, "ArrayMesh"), "set_cage_deformed", "get_cage_deformed");
-
-    ClassDB::bind_method(D_METHOD("set_source_mesh", "mesh"), &MeshMorph3D::set_source_mesh);
-    ClassDB::bind_method(D_METHOD("get_source_mesh"), &MeshMorph3D::get_source_mesh);
-    ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "source_mesh", PROPERTY_HINT_RESOURCE_TYPE, "ArrayMesh"), "set_source_mesh", "get_source_mesh");
+    ClassDB::bind_method(D_METHOD("set_source_mesh_from_path", "path"), &MeshMorph3D::set_source_mesh_from_path);
+    ClassDB::bind_method(D_METHOD("get_source_mesh_from_path"), &MeshMorph3D::get_source_mesh_from_path);
+    ADD_PROPERTY(PropertyInfo(Variant::NODE_PATH, "source_mesh"), "set_source_mesh_from_path", "get_source_mesh_from_path");
 
 	ClassDB::bind_method(D_METHOD("set_deformation_switch", "value"), &MeshMorph3D::set_deformation_switch);
 	ClassDB::bind_method(D_METHOD("get_deformation_switch"), &MeshMorph3D::get_deformation_switch);
@@ -81,8 +81,31 @@ MeshMorph3D::~MeshMorph3D() {
 }
 
 void MeshMorph3D::apply_deformation_to_children() {
+    MeshInstance3D *cage_mesh_instance_3d = Object::cast_to<MeshInstance3D>(get_node_or_null(get_cage_mesh_from_path()));
+	Ref<ArrayMesh> cage_mesh;
+    if (cage_mesh_instance_3d) {
+		cage_mesh = cage_mesh_instance_3d->get_mesh();
+    }
 	if (cage_mesh.is_null()) {
 		UtilityFunctions::printerr("Cage mesh is not available.");
+		return;
+	}
+	Ref<ArrayMesh> cage_deformed;
+    MeshInstance3D *cage_deformed_instance_3d = Object::cast_to<MeshInstance3D>(get_node_or_null(get_cage_deformed_from_path()));
+    if (cage_deformed_instance_3d) {
+		cage_deformed = cage_deformed_instance_3d->get_mesh();
+    }
+	if (cage_deformed.is_null()) {
+		UtilityFunctions::printerr("Cage deformed mesh is not available.");
+		return;
+	}
+	Ref<ArrayMesh> source_mesh;
+    MeshInstance3D *source_mesh_instance_3d = Object::cast_to<MeshInstance3D>(get_node_or_null(get_source_mesh_from_path()));
+	if (source_mesh_instance_3d) {
+		source_mesh = source_mesh_instance_3d->get_mesh();
+	}
+	if (source_mesh.is_null()) {
+		UtilityFunctions::printerr("Source mesh is not available.");
 		return;
 	}
 	std::vector<point3d> cage_vertices;
@@ -223,7 +246,6 @@ void MeshMorph3D::apply_deformation_to_children() {
 		}
 	}
 	st->generate_normals();
-	st->generate_tangents();
 	set_mesh(st->commit());
 }
 
@@ -268,7 +290,6 @@ std::vector<point3d> godot::MeshMorph3D::extract_vertices(Ref<ArrayMesh> mesh) {
 
 const std::vector<std::vector<unsigned int>> godot::MeshMorph3D::extract_triangles(Ref<ArrayMesh> mesh) {
 	std::vector<std::vector<unsigned int>> triangles;
-	// Assuming mesh has only one surface
 	Array arrays = mesh->surface_get_arrays(0);
 	PackedInt32Array index_array = arrays[Mesh::ARRAY_INDEX];
 	for (int i = 0; i < index_array.size(); i += 3) {
@@ -290,25 +311,16 @@ bool godot::MeshMorph3D::get_deformation_switch() const {
 void godot::MeshMorph3D::set_deformation_switch(bool value) {
 	deformation_switch = value;
 	if (deformation_switch) {
-		set_mesh(Ref<ArrayMesh>());
 		apply_deformation_to_children();
 	}
 }
 
-Ref<ArrayMesh> godot::MeshMorph3D::get_cage_deformed() const {
-	return cage_deformed;
+void godot::MeshMorph3D::set_source_mesh_from_path(NodePath p_path) { 
+	source_path = p_path;
 }
 
-void godot::MeshMorph3D::set_cage_deformed(Ref<ArrayMesh> p_mesh) {
-	cage_deformed = p_mesh;
-}
-
-Ref<ArrayMesh> godot::MeshMorph3D::get_cage_mesh() const {
-	return cage_mesh;
-}
-
-void godot::MeshMorph3D::set_cage_mesh(Ref<ArrayMesh> p_mesh) {
-	cage_mesh = p_mesh;
+NodePath godot::MeshMorph3D::get_source_mesh_from_path() const { 
+	return source_path; 
 }
 
 void godot::MeshMorph3D::extract_mesh_data(const Ref<ArrayMesh> mesh,
@@ -316,7 +328,7 @@ void godot::MeshMorph3D::extract_mesh_data(const Ref<ArrayMesh> mesh,
 		std::vector<std::vector<unsigned int>> &triangles,
 		bool include_triangles) {
 	if (mesh.is_null()) {
-		UtilityFunctions::printerr("Mesh is not available.", __FUNCTION__, __FILE__, __LINE__);
+		UtilityFunctions::printerr("Mesh is not available.");
 		return;
 	}
 	godot::Ref<godot::MeshDataTool> mdt = memnew(MeshDataTool);
@@ -341,4 +353,20 @@ void godot::MeshMorph3D::extract_mesh_data(const Ref<ArrayMesh> mesh,
 		}
 	}
 	UtilityFunctions::print("Mesh data extracted successfully.");
+}
+
+void godot::MeshMorph3D::set_cage_mesh_from_path(NodePath p_path) {
+    cage_mesh_path = p_path;
+}
+
+NodePath godot::MeshMorph3D::get_cage_mesh_from_path() const {
+    return cage_mesh_path;
+}
+
+void godot::MeshMorph3D::set_cage_deformed_from_path(NodePath p_path) {
+    cage_deformed_path = p_path;
+}
+
+NodePath godot::MeshMorph3D::get_cage_deformed_from_path() const {
+	return cage_deformed_path;
 }

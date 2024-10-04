@@ -1,0 +1,22 @@
+[remap]
+
+importer="wavefront_obj"
+importer_version=1
+type="Mesh"
+uid="uid://dfu63ufsbiv72"
+path="res://.godot/imported/output_with_boundary.obj-6fbf5eecda4a658e664bb3faeca2516d.mesh"
+
+[deps]
+
+files=["res://.godot/imported/output_with_boundary.obj-6fbf5eecda4a658e664bb3faeca2516d.mesh"]
+
+source_file="res://output_with_boundary.obj"
+dest_files=["res://.godot/imported/output_with_boundary.obj-6fbf5eecda4a658e664bb3faeca2516d.mesh", "res://.godot/imported/output_with_boundary.obj-6fbf5eecda4a658e664bb3faeca2516d.mesh"]
+
+[params]
+
+generate_tangents=true
+scale_mesh=Vector3(1, 1, 1)
+offset_mesh=Vector3(0, 0, 0)
+optimize_mesh=true
+force_disable_mesh_compression=false

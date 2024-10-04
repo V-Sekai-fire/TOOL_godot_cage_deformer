@@ -57,11 +57,10 @@ class MeshMorph3D : public MeshInstance3D {
 	GDCLASS(MeshMorph3D, MeshInstance3D)
 private:
 	float gamma_D_13BC = 1.0;
-	Ref<ArrayMesh> cage_mesh;
-	Ref<ArrayMesh> cage_deformed;
-	Ref<ArrayMesh> source_mesh;
+    NodePath cage_mesh_path;
+    NodePath cage_deformed_path;
+    NodePath source_path;
 	bool deformation_switch = false;
-
 	std::vector<point3d> convert_godot_array_to_vector(const Array &godot_array);
 	std::vector<point3d> extract_vertices(Ref<ArrayMesh> mesh);
 	const std::vector<std::vector<unsigned int>> extract_triangles(Ref<ArrayMesh> mesh);
@@ -80,12 +79,12 @@ public:
 	~MeshMorph3D();
 	void set_gamma_D_13BC(float value) { gamma_D_13BC = value; }
 	float get_gamma_D_13BC() const { return gamma_D_13BC; }
-	void set_cage_mesh(Ref<ArrayMesh> path);
-	Ref<ArrayMesh> get_cage_mesh() const;
-	void set_cage_deformed(Ref<ArrayMesh> path);
-	Ref<ArrayMesh> get_cage_deformed() const;
-	void set_source_mesh(Ref<ArrayMesh> p_mesh) { source_mesh = p_mesh; }
-	Ref<ArrayMesh> get_source_mesh() const { return source_mesh; }
+	void set_cage_mesh_from_path(NodePath path);
+	NodePath get_cage_mesh_from_path() const;
+	void set_cage_deformed_from_path(NodePath path);
+	NodePath get_cage_deformed_from_path() const;
+	void set_source_mesh_from_path(NodePath p_mesh);
+	NodePath get_source_mesh_from_path() const;
 	void set_deformation_switch(bool value);
 	bool get_deformation_switch() const;
 };
