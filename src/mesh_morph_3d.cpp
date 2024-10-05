@@ -357,36 +357,38 @@ NodePath godot::MeshMorph3D::get_source_mesh_from_path() const {
 	return source_path; 
 }
 
-void godot::MeshMorph3D::extract_mesh_data(const Ref<ArrayMesh> mesh,
-		std::vector<point3d> &vertices,
-		std::vector<std::vector<unsigned int>> &triangles,
-		bool include_triangles) {
-	if (mesh.is_null()) {
-		UtilityFunctions::printerr("Mesh is not available.");
-		return;
-	}
-	godot::Ref<godot::MeshDataTool> mdt = memnew(MeshDataTool);
-	mdt->create_from_surface(mesh, 0);
+void MeshMorph3D::extract_mesh_data(const Ref<ArrayMesh> mesh,
+			std::vector<point3d> &vertices,
+			std::vector<std::vector<unsigned int>> &triangles,
+			bool include_triangles) {
+    if (mesh.is_null()) {
+        UtilityFunctions::printerr("Mesh is not available.");
+        return;
+    }
+    int surface_count = mesh->get_surface_count();
+    for (int surface_index = 0; surface_index < surface_count; ++surface_index) {
+        Array arrays = mesh->surface_get_arrays(surface_index);
+        PackedVector3Array vertex_array = arrays[Mesh::ARRAY_VERTEX];
+        PackedInt32Array index_array = arrays[Mesh::ARRAY_INDEX];
 
-	int vertex_count = mdt->get_vertex_count();
-	for (int i = 0; i < vertex_count; ++i) {
-		godot::Vector3 vertex = mdt->get_vertex(i);
-		std::swap(vertex.y, vertex.z);
-		vertex.y = -vertex.y;
-		vertices.push_back(vertex);
-	}
+        for (int i = 0; i < vertex_array.size(); ++i) {
+            Vector3 vertex = vertex_array[i];
+            std::swap(vertex.y, vertex.z);
+            vertex.y = -vertex.y;
+            vertices.push_back(vertex);
+        }
 
-	if (include_triangles) {
-		int face_count = mdt->get_face_count();
-		for (int i = 0; i < face_count; ++i) {
-			std::vector<unsigned int> triangle;
-			triangle.push_back(mdt->get_face_vertex(i, 0));
-			triangle.push_back(mdt->get_face_vertex(i, 2));
-			triangle.push_back(mdt->get_face_vertex(i, 1));
-			triangles.push_back(triangle);
-		}
-	}
-	// UtilityFunctions::print("Mesh data extracted successfully.");
+        if (include_triangles && index_array.size() % 3 == 0) {
+            for (int i = 0; i < index_array.size(); i += 3) {
+                std::vector<unsigned int> triangle;
+                triangle.push_back(index_array[i]);
+                triangle.push_back(index_array[i + 2]); // Swap the second and third indices
+                triangle.push_back(index_array[i + 1]);
+                triangles.push_back(triangle);
+            }
+        }
+    }
+    // UtilityFunctions::print("Mesh data extracted successfully.");
 }
 
 void godot::MeshMorph3D::set_cage_mesh_from_path(NodePath p_path) {
