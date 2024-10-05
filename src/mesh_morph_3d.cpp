@@ -114,14 +114,12 @@ void MeshMorph3D::apply_deformation_to_children() {
 		cage_vertices,
 		cage_triangles,
 		true);
-	// UtilityFunctions::print("Cage model loaded successfully.");
 	std::vector<point3d> mesh_vertices;
 	std::vector<std::vector<unsigned int>> mesh_triangles;
 	extract_mesh_data(source_mesh,
 		mesh_vertices,
 		mesh_triangles,
 		true);
-	// UtilityFunctions::print(String("Vertex count in original mesh: ") + String::num_int64(mesh_vertices.size()));
 
 	{
 		Ref<ArrayMesh> array_mesh = memnew(ArrayMesh);
@@ -180,14 +178,14 @@ void MeshMorph3D::apply_deformation_to_children() {
 			cage_triangles, cage_vertices,
 			ConstrainedBiH_13_C11, ConstrainedBiH_13_C12, ConstrainedBiH_13_C21, ConstrainedBiH_13_C22,
 			gamma_D_13BC);
-	// UtilityFunctions::print("(1,3)-regularized matrices computed successfully.");
+	// (1,3)-regularized matrices computed successfully
 	BHC_h_phi.resize(mesh_vertices.size());
 	BHC_bh_phi.resize(mesh_vertices.size());
 	BHC_h_psi.resize(mesh_vertices.size());
 	BHC_bh_psi.resize(mesh_vertices.size());
 
 	// Compute unconstrained coordinates
-	// UtilityFunctions::print("Compute (1,3)-regularized BHC ");
+	// Compute (1,3)-regularized BHC
 	BHConstrainedC_13_phi.resize(mesh_vertices.size());
 	BHConstrainedC_13_psi.resize(mesh_vertices.size());
 
@@ -197,8 +195,7 @@ void MeshMorph3D::apply_deformation_to_children() {
 				cage_triangles, cage_vertices,
 				BHC_h_phi[p_idx], BHC_h_psi[p_idx], BHC_bh_phi[p_idx], BHC_bh_psi[p_idx]);
 	}
-	// UtilityFunctions::print("Unconstrained coordinates computed.");
-
+	// Unconstrained coordinates computed
 	// Compute (1,3)-regularized blending from unconstrained biharmonics
 	for (int p_idx = 0; p_idx < mesh_vertices.size(); ++p_idx) {
 		BiharmonicCoordinates3D::compute_13_blending_from_unconstrained_biharmonics(
@@ -211,7 +208,6 @@ void MeshMorph3D::apply_deformation_to_children() {
 		cage_modified_vertices,
 		cage_triangles,
 		false);
-	// Compute cage triangle normals
 	std::vector<point3d> cage_triangle_normals(cage_triangles.size(), point3d(0, 0, 0));
 	for (unsigned int tIt = 0; tIt < cage_triangles.size(); ++tIt) {
 		auto &t = cage_triangles[tIt];
@@ -219,9 +215,6 @@ void MeshMorph3D::apply_deformation_to_children() {
 				cage_modified_vertices[t[2]] - cage_modified_vertices[t[0]])
 											 .direction();
 	}
-	// UtilityFunctions::print("Cage triangle normals computed.");
-
-	// Apply deformation to mesh vertices based on computed coordinates and normals
 #pragma omp parallel for
 	for (int v = 0; v < mesh_vertices.size(); ++v) {
 		point3d pos(0, 0, 0);
@@ -301,7 +294,6 @@ std::vector<point3d> godot::MeshMorph3D::extract_vertices(Ref<ArrayMesh> mesh) {
 	if (index_array.is_empty()) {
 		for (int i = 0; i < vertex_array.size(); ++i) {
 			Vector3 godot_vertex = vertex_array[i];
-			// Swapping Y and Z coordinates, and negating the new Y
 			point3d converted_vertex(godot_vertex.x, -godot_vertex.z, godot_vertex.y);
 			vertices.push_back(converted_vertex);
 		}
@@ -310,7 +302,6 @@ std::vector<point3d> godot::MeshMorph3D::extract_vertices(Ref<ArrayMesh> mesh) {
 			int index = index_array[i];
 			if (index >= 0 && index < vertex_array.size()) {
 				Vector3 godot_vertex = vertex_array[index];
-				// Swapping Y and Z coordinates, and negating the new Y
 				point3d converted_vertex(godot_vertex.x, -godot_vertex.z, godot_vertex.y);
 				vertices.push_back(converted_vertex);
 			} else {
@@ -382,13 +373,12 @@ void MeshMorph3D::extract_mesh_data(const Ref<ArrayMesh> mesh,
             for (int i = 0; i < index_array.size(); i += 3) {
                 std::vector<unsigned int> triangle;
                 triangle.push_back(index_array[i]);
-                triangle.push_back(index_array[i + 2]); // Swap the second and third indices
+                triangle.push_back(index_array[i + 2]);
                 triangle.push_back(index_array[i + 1]);
                 triangles.push_back(triangle);
             }
         }
     }
-    // UtilityFunctions::print("Mesh data extracted successfully.");
 }
 
 void godot::MeshMorph3D::set_cage_mesh_from_path(NodePath p_path) {
