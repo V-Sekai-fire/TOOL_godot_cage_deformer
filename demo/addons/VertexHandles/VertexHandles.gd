@@ -46,9 +46,7 @@ func _update_mesh():
 		get_node("../../MeshMorph3D").set("deformation_switch", true)
 		
 func _set_points(value):
-	print(value)
 	points = value
-	print("setting setting")
 
 func _to_array_mesh(_mesh:Mesh) -> ArrayMesh:
 	var surface_arrays := []
