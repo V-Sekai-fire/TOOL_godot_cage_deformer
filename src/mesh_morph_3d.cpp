@@ -234,19 +234,53 @@ void MeshMorph3D::apply_deformation_to_children() {
 		mesh_vertices[v] = pos;
 	}
     // UtilityFunctions::print("Mesh deformation updated from cage deformation.");
-	Ref<SurfaceTool> st = memnew(SurfaceTool);
-	st->begin(Mesh::PRIMITIVE_TRIANGLES);
+	Ref<ArrayMesh> deformed_mesh = memnew(ArrayMesh);
+	Array arrays;
+	arrays.resize(Mesh::ARRAY_MAX);
+
+	PackedVector3Array vertices;
+	PackedInt32Array indices;
+	PackedVector3Array normals;
+
+	std::vector<Vector3> computed_normals(mesh_vertices.size(), Vector3(0, 0, 0));
+	for (size_t i = 0; i < mesh_triangles.size(); ++i) {
+		const auto& triangle = mesh_triangles[i];
+		Vector3 v0 = Vector3(mesh_vertices[triangle[0]].x(), mesh_vertices[triangle[0]].z(), -mesh_vertices[triangle[0]].y());
+		Vector3 v1 = Vector3(mesh_vertices[triangle[1]].x(), mesh_vertices[triangle[1]].z(), -mesh_vertices[triangle[1]].y());
+		Vector3 v2 = Vector3(mesh_vertices[triangle[2]].x(), mesh_vertices[triangle[2]].z(), -mesh_vertices[triangle[2]].y());
+
+		Vector3 normal = (v1 - v0).cross(v2 - v0).normalized();
+
+		computed_normals[triangle[0]] += normal;
+		computed_normals[triangle[1]] += normal;
+		computed_normals[triangle[2]] += normal;
+	}
+
+	for (auto& normal : computed_normals) {
+		normal.normalize();
+	}
+
 	for (const auto& vertex : mesh_vertices) {
 		Vector3 godot_vertex(vertex.x(), vertex.z(), -vertex.y());
-		st->add_vertex(godot_vertex);
+		vertices.push_back(godot_vertex);
 	}
+
 	for (const auto& triangle : mesh_triangles) {
 		for (int i = triangle.size() - 1; i >= 0; --i) {
-			st->add_index(triangle[i]);
+			indices.push_back(triangle[i]);
 		}
 	}
-	st->generate_normals();
-	set_mesh(st->commit());
+
+	for (const auto& normal : computed_normals) {
+		normals.push_back(normal);
+	}
+
+	arrays[Mesh::ARRAY_VERTEX] = vertices;
+	arrays[Mesh::ARRAY_INDEX] = indices;
+	arrays[Mesh::ARRAY_NORMAL] = normals;
+
+	deformed_mesh->add_surface_from_arrays(Mesh::PRIMITIVE_TRIANGLES, arrays);
+	set_mesh(deformed_mesh);
 }
 
 std::vector<point3d> godot::MeshMorph3D::convert_godot_array_to_vector(const Array &godot_array) {
