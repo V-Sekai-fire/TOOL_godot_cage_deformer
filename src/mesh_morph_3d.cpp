@@ -383,6 +383,22 @@ void MeshMorph3D::extract_mesh_data(const Ref<ArrayMesh> mesh,
 
 void godot::MeshMorph3D::set_cage_mesh_from_path(NodePath p_path) {
     cage_mesh_path = p_path;
+	MeshInstance3D *mesh_instance = cast_to<MeshInstance3D>(get_node_or_null(p_path));
+	if(!mesh_instance) {
+		return;
+	}
+	Ref<Mesh> mesh = mesh_instance->get_mesh();
+	if (mesh.is_null() || mesh->get_surface_count() == 0) {
+		return;
+	}
+	mesh_instance->set_mesh(_to_array_mesh(mesh));
+	points.clear();
+	for (int i = 0; i < mesh->get_surface_count(); ++i) {
+		Array arrays = mesh->surface_get_arrays(i);
+		if (!arrays.is_empty()) {
+			points.push_back(arrays[Mesh::ARRAY_VERTEX]);
+		}
+	}
 }
 
 NodePath godot::MeshMorph3D::get_cage_mesh_from_path() const {

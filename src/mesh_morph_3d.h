@@ -44,6 +44,7 @@
 
 #include "point3.h"
 #include <godot_cpp/classes/array_mesh.hpp>
+#include <godot_cpp/variant/typed_array.hpp>
 #include <godot_cpp/classes/file_access.hpp>
 #include <godot_cpp/classes/mesh_instance3d.hpp>
 #include <godot_cpp/classes/resource_loader.hpp>
@@ -71,12 +72,58 @@ private:
 			std::vector<std::vector<unsigned int>> &triangles,
 			bool include_triangles = true);
 	void apply_deformation_to_children();
+    Array points;
 protected:
 	static void _bind_methods();
 
 public:
 	MeshMorph3D();
 	~MeshMorph3D();
+	void _update_mesh() {
+		if (!is_inside_tree() || points.is_empty()) {
+			return;
+		}
+		Ref<ArrayMesh> current_mesh = get_mesh();
+		if (current_mesh.is_null() || current_mesh->get_surface_count() == 0) {
+			return;
+		}
+		TypedArray<Array> surface_arrays;
+		for (int i = 0; i < current_mesh->get_surface_count(); ++i) {
+			Array arrays = current_mesh->surface_get_arrays(i);
+			if (!arrays.is_empty()) {
+				surface_arrays.push_back(arrays);
+			}
+		}
+		current_mesh->clear_surfaces();
+		for (int i = 0; i < surface_arrays.size(); ++i) {
+			Array arrays = surface_arrays[i];
+			if (i < points.size() || i >= 0) {
+				Array points_i = points[i];
+				if (!points_i.is_empty()) {
+					arrays[Mesh::ARRAY_VERTEX] = points[i];
+				}
+			}
+			current_mesh->add_surface_from_arrays(Mesh::PRIMITIVE_TRIANGLES, arrays);
+		}
+		apply_deformation_to_children();
+	}
+	Ref<ArrayMesh> _to_array_mesh(Ref<Mesh> p_mesh) {
+		if (p_mesh.is_null()) {
+			return Ref<ArrayMesh>();
+		}
+		Array surface_arrays;
+		for (int i = 0; i < p_mesh->get_surface_count(); ++i) {
+			Array arrays = p_mesh->surface_get_arrays(i);
+			if (!arrays.is_empty()) {
+				surface_arrays.push_back(arrays);
+			}
+		}
+		Ref<ArrayMesh> new_mesh = memnew(ArrayMesh);
+		for (int i = 0; i < surface_arrays.size(); ++i) {
+			new_mesh->add_surface_from_arrays(Mesh::PRIMITIVE_TRIANGLES, surface_arrays[i]);
+		}
+		return new_mesh;
+	}
 	void set_gamma_D_13BC(float value) { gamma_D_13BC = value; }
 	float get_gamma_D_13BC() const { return gamma_D_13BC; }
 	void set_cage_mesh_from_path(NodePath path);

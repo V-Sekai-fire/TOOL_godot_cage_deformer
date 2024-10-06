@@ -30,6 +30,9 @@
 
 #include "register_types.h"
 #include "mesh_morph_3d.h"
+#include "vertex_handles_gizmo_plugin.h"
+#include "vertex_handles_editor_plugin.h"
+
 #include <gdextension_interface.h>
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/core/defs.hpp>
@@ -38,16 +41,15 @@
 using namespace godot;
 
 void initialize_gdextension_types(ModuleInitializationLevel p_level) {
-	if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE) {
-		return;
+	if (p_level == MODULE_INITIALIZATION_LEVEL_EDITOR) {
+		ClassDB::register_class<MeshMorph3D>();
+		ClassDB::register_class<VertexHandlesGizmoPlugin>();
+		ClassDB::register_class<VertexHandlesEditorPlugin>();
+    	EditorPlugins::add_by_type<VertexHandlesEditorPlugin>();
 	}
-	ClassDB::register_class<MeshMorph3D>();
 }
 
 void uninitialize_gdextension_types(ModuleInitializationLevel p_level) {
-	if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE) {
-		return;
-	}
 }
 
 extern "C" {
