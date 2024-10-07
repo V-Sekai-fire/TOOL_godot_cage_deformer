@@ -320,6 +320,32 @@ jobs:
       - name: Merge Artifacts
         uses: actions/upload-artifact/merge@v4
         with:
-          name: godot-cpp-template
+          name: ${{ env.LIBNAME }}
           pattern: godot-cpp-template-*
           delete-merged: true
+  demo:
+    runs-on: ubuntu-20.04
+    needs: merge
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+          fetch-depth: 0
+      - name: Fetch Merged Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.LIBNAME }}
+          path: temp/
+
+      - name: Prepare Demo Bin Directory
+        run: |
+          mkdir -p demo/bin
+          rsync -av --ignore-existing temp/ demo/bin/
+          rm -rf temp/
+
+      - name: Upload Demo Folder
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.LIBNAME }}-demo
+          path: demo/
