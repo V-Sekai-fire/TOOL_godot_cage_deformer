@@ -41,6 +41,7 @@ func _ready() -> void:
 	
 	# Refresh the points just in case we are dealing with a new mesh
 	EditorInterface.get_selection().selection_changed.connect(_refresh_point_arrays)
+	_request_redraw.connect((get_node_or_null("../../MeshMorph3D") as MeshMorph3D).apply_deformation_to_children)
 
 func _refresh_point_arrays():
 	if not self in EditorInterface.get_selection().get_selected_nodes():
