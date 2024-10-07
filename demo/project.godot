@@ -11,7 +11,8 @@ config_version=5
 [application]
 
 config/name="3D Cage Deformer"
-config/features=PackedStringArray("4.3", "Forward Plus")
+run/main_scene="res://triangle_3d_cage/art/cages/node_3d.tscn"
+config/features=PackedStringArray("4.4", "Forward Plus")
 config/icon="res://icon.svg"
 
 [editor_plugins]
