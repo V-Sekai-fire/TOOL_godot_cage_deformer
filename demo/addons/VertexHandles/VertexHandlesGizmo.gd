@@ -1,7 +1,11 @@
 @tool
 extends EditorNode3DGizmoPlugin
 
-func _init():
+var editor_plugin : EditorPlugin
+
+func _init(_editor_plugin:EditorPlugin):
+	editor_plugin = _editor_plugin
+	
 	create_material("main", Color(1,1,1), false, true, true)
 	create_handle_material("handles",false)
 
@@ -50,15 +54,20 @@ func _set_handle(gizmo,id,secondary,camera,point):
 	# Transform the intersection point from world space to local node space
 	p = node3d.global_transform.affine_inverse() * p
 	
-	node3d.point_arrays[0][id] = p
-	node3d.point_arrays = node3d.point_arrays # Force setter call
+	node3d.set_point(0, id, p)
 	
 	_redraw(gizmo)
 
 func _commit_handle(gizmo,id,secondary,restore,cancel):
 	var node3d : Node3D = gizmo.get_node_3d()
 	
-	# TODO - use EditorUndoRedoManager
+	var undo : EditorUndoRedoManager = editor_plugin.get_undo_redo()
+	
+	# Allows user to undo
+	undo.create_action("Move handle " + str(id))
+	undo.add_do_method(node3d, "set_point", 0, id, node3d.point_arrays[0][id])
+	undo.add_undo_method(node3d, "set_point", 0, id, restore)
+	undo.commit_action(false)
 
 func _redraw(gizmo):
 	gizmo.clear()

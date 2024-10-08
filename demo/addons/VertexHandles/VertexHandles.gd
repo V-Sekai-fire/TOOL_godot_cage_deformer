@@ -1,7 +1,8 @@
 @tool
 class_name VertexHandles extends Node3D
 
-## Assign a new [VertexHandles] under a [MeshInstance3D] to modify it's mesh
+## Add a new [VertexHandles] as a child of [MeshInstance3D] to modify it's mesh
+
 
 
 # PUBLIC
@@ -30,7 +31,6 @@ signal _request_redraw
 # - Add options
 # - Support double vertices
 # - Support multiple surfaces
-# - Make sure things are commiting and can undo/redo 
 # - Fix handle rendering bug
 # - Sort handles from back to front
 
@@ -80,6 +80,10 @@ func _update_mesh():
 
 func _set_points(value):
 	point_arrays = value
+	_update_mesh()
+
+func set_point(i:int, point_idx:int, p:Vector3):
+	point_arrays[i][point_idx] = p
 	_update_mesh()
 
 func _to_array_mesh(_mesh:Mesh) -> ArrayMesh:
