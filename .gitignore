@@ -52,3 +52,5 @@ compile_commands.json
 .DS_Store
 
 bin/windows/triangle_3d_cage.windows.template_debug.x86_64.dll
+
+src/gen/

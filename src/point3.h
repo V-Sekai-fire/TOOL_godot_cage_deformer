@@ -53,25 +53,6 @@ We provide implementation of this, using the GNU Scientific Library.
 Uncomment #define __USE_GSL_FOR_MAT33
 */
 
-// #define __USE_GSL_FOR_MAT33
-#define __USE_EIGEN_FOR_MAT33
-// #define __USE_OPENGL_METHODS_ON_POINT3
-
-#ifdef __USE_GSL_FOR_MAT33
-#include <gsl/gsl_linalg/gsl_linalg.h>
-#include <gsl/gsl_matrix/gsl_matrix.h>
-// you need to add the following libraries to your project : gsl, gslcblas
-#else
-#ifdef __USE_EIGEN_FOR_MAT33
-#define _SILENCE_CXX17_NEGATORS_DEPRECATION_WARNING // needed to compile Eigen3 with c++17
-#include <Eigen/SVD>
-#endif
-#endif
-
-#ifdef __USE_OPENGL_METHODS_ON_POINT3
-#include <gl/openglincludeQtComp.h>
-#endif
-
 template <typename T>
 class point3 {
 public:
@@ -1016,59 +997,6 @@ public:
 		return vals[0] * (vals[4] * c[2] - vals[7] * c[1]) - vals[1] * (vals[3] * c[2] - vals[6] * c[1]) + c[0] * (vals[3] * vals[7] - vals[6] * vals[4]);
 	}
 
-	void RSD(mat33<T> &R, mat33<T> &S) const {
-		mat33<T> U, Vt;
-		T x, y, z;
-		SVD(U, x, y, z, Vt);
-		R = U * Vt;
-		S = Vt.getTranspose() * mat33<T>::diag(x, y, z) * Vt;
-	}
-
-	static mat33<T> pseudoInverse(mat33<T> const &m, bool &isRealInverse, double defaultValueForInverseSingularValue = 0.0) {
-		T det = m.determinant();
-		if (fabs(det) != 0.0) {
-			isRealInverse = true;
-			return mat33<T>(m(1, 1) * m(2, 2) - m(2, 1) * m(1, 2), m(0, 2) * m(2, 1) - m(0, 1) * m(2, 2), m(0, 1) * m(1, 2) - m(0, 2) * m(1, 1),
-						   m(1, 2) * m(2, 0) - m(1, 0) * m(2, 2), m(0, 0) * m(2, 2) - m(0, 2) * m(2, 0), m(0, 2) * m(1, 0) - m(0, 0) * m(1, 2),
-						   m(1, 0) * m(2, 1) - m(1, 1) * m(2, 0), m(0, 1) * m(2, 0) - m(0, 0) * m(2, 1), m(0, 0) * m(1, 1) - m(0, 1) * m(1, 0)) /
-					det;
-		}
-
-		// otherwise:
-		isRealInverse = false;
-		mat33<T> U;
-		T sx;
-		T sy;
-		T sz;
-		mat33<T> Vt;
-		m.SVD(U, sx, sy, sz, Vt);
-		T sxInv = sx == 0.0 ? 1.0 / sx : defaultValueForInverseSingularValue;
-		T syInv = sy == 0.0 ? 1.0 / sy : defaultValueForInverseSingularValue;
-		T szInv = sz == 0.0 ? 1.0 / sz : defaultValueForInverseSingularValue;
-		return Vt.getTranspose() * mat33<T>::diag(sxInv, syInv, szInv) * U.getTranspose();
-	}
-
-	template <class point_t>
-	point_t solveLinearSystem(point_t const &rhs, bool &isPseudoInverse) const {
-		double det = determinant();
-		double epsilonPrecision = 0.000001;
-		if (fabs(det) < epsilonPrecision) {
-			isPseudoInverse = true;
-			mat33<T> U, Vt;
-			double x, y, z;
-			SVD(U, x, y, z, Vt);
-			double xInv = fabs(x) < epsilonPrecision ? 0.0 : 1.0 / x;
-			double yInv = fabs(y) < epsilonPrecision ? 0.0 : 1.0 / y;
-			double zInv = fabs(z) < epsilonPrecision ? 0.0 : 1.0 / z;
-			return Vt.getTranspose() * mat33<T>::diag(xInv, yInv, zInv) * U.getTranspose() * rhs;
-		}
-		isPseudoInverse = false;
-		return point_t(
-				determinant_with_col0(rhs) / det,
-				determinant_with_col1(rhs) / det,
-				determinant_with_col2(rhs) / det);
-	}
-
 	inline T trace() const { return vals[0] + vals[4] + vals[8]; }
 
 	////////        TRANSPOSE       /////////
@@ -1231,62 +1159,6 @@ public:
 
 	// method defined as a standard Linear System Jacobian initialization (either Identity() or RandRotation())
 	inline static mat33<T> LSJacobianInit() { return mat33<T>::Identity(); }
-
-	void SVD(mat33<T> &U, T &sx, T &sy, T &sz, mat33<T> &Vt) const {
-#ifdef __USE_GSL_FOR_MAT33
-		gsl_matrix *u = gsl_matrix_alloc(3, 3);
-		for (unsigned int i = 0; i < 3; ++i)
-			for (unsigned int j = 0; j < 3; ++j)
-				gsl_matrix_set(u, i, j, this->getCoord(i, j));
-
-		gsl_matrix *v = gsl_matrix_alloc(3, 3);
-		gsl_vector *s = gsl_vector_alloc(3);
-		gsl_vector *work = gsl_vector_alloc(3);
-
-		gsl_linalg_SV_decomp(u,
-				v,
-				s,
-				work);
-
-		sx = s->data[0];
-		sy = s->data[1];
-		sz = s->data[2];
-		for (unsigned int i = 0; i < 3; ++i) {
-			for (unsigned int j = 0; j < 3; ++j) {
-				U(i, j) = gsl_matrix_get(u, i, j);
-				Vt(i, j) = gsl_matrix_get(v, j, i);
-			}
-		}
-
-		gsl_matrix_free(u);
-		gsl_matrix_free(v);
-		gsl_vector_free(s);
-		gsl_vector_free(work);
-#else
-#ifdef __USE_EIGEN_FOR_MAT33
-		Eigen::MatrixXd m(3, 3);
-		for (int i = 0; i < 3; ++i) {
-			for (int j = 0; j < 3; ++j) {
-				m(i, j) = this->getCoord(i, j);
-			}
-		}
-		Eigen::JacobiSVD<Eigen::MatrixXd> svdStruct = m.jacobiSvd(Eigen::ComputeFullU | Eigen::ComputeFullV);
-		U = mat33<T>(svdStruct.matrixU());
-		sx = svdStruct.singularValues()[0];
-		sy = svdStruct.singularValues()[1];
-		sz = svdStruct.singularValues()[2];
-		Vt = mat33<T>(svdStruct.matrixV().transpose());
-#else
-		assert(0 && "You need to use a Linear Algebra Library in order to use mat33<T>::SVD !");
-#endif
-#endif
-
-		// a transformation T is given as R.B.S.Bt, R = rotation , B = local basis (rotation matrix), S = scales in the basis B
-		// it can be obtained from the svd decomposition of T = U Sigma Vt :
-		// B = V
-		// S = Sigma
-		// R = U.Vt
-	}
 
 	///////////////////      Projections onto Rotations :     ////////////////////
 	mat33<T> getRotationalPart() const {
@@ -1562,95 +1434,6 @@ inline std::ostream &operator<<(std::ostream &s, mat33<T> const &m) {
 	  << m(6) << " \t" << m(7) << " \t" << m(8) << std::endl;
 	return s;
 }
-
-#ifdef __USE_GSL_FOR_MAT33
-
-/*
-template< typename T >
-class mat33staticsvd : public mat33< T >
-{
-private:
-	gsl_matrix * u;
-	gsl_matrix * v;
-	gsl_vector * s;
-	gsl_vector * work;
-
-	bool svd_allocated;
-
-	void allocate_svd()
-	{
-		if(svd_allocated) return;
-		u = gsl_matrix_alloc(3,3);
-		v = gsl_matrix_alloc(3,3);
-		s = gsl_vector_alloc(3);
-		work = gsl_vector_alloc(3);
-		svd_allocated = true;
-	}
-	void free_svd()
-	{
-		if(!svd_allocated) return;
-		gsl_matrix_free(u);
-		gsl_matrix_free(v);
-		gsl_vector_free(s);
-		gsl_vector_free(work);
-		svd_allocated = false;
-	}
-
-public:
-	mat33staticsvd<T>() :
-		mat33< T >() ,
-		svd_allocated(false)
-	{
-	}
-	mat33staticsvd<T>( T v1 , T v2 , T v3 , T v4 , T v5 , T v6 , T v7 , T v8 , T v9) :
-		mat33< T >( v1 , v2 , v3 , v4 , v5 , v6 , v7 , v8 , v9) ,
-		svd_allocated(false)
-	{
-	}
-	template< typename T2 > mat33staticsvd<T>( const std::vector< T2 > & cc ) :
-		mat33< T >(cc) ,
-		svd_allocated(false)
-	{
-	}
-	template< typename T2 > mat33staticsvd<T>( const mat33< T2 > & m ) :
-		mat33< T >(m) ,
-		svd_allocated(false)
-	{
-	}
-	~mat33staticsvd<T>()
-	{
-		free_svd();
-	}
-
-	void SVD( mat33<T> & U , T & sx , T & sy , T & sz , mat33<T> & Vt ) const
-	{
-		allocate_svd();
-
-		for(unsigned int i = 0 ; i < 3; ++i)
-			for(unsigned int j = 0 ; j < 3; ++j)
-				gsl_matrix_set( u , i , j , this->getCoord(i,j) );
-
-		gsl_linalg_SV_decomp (u,
-							  v,
-							  s,
-							  work);
-
-		sx = s->data[0];
-		sy = s->data[1];
-		sz = s->data[2];
-		for(unsigned int i = 0 ; i < 3; ++i)
-		{
-			for(unsigned int j = 0 ; j < 3; ++j)
-			{
-				U(i,j) = gsl_matrix_get( u , i , j );
-				Vt(i,j) = gsl_matrix_get( v , j , i );
-			}
-		}
-	}
-};
-*/
-
-#endif
 
 #endif
 

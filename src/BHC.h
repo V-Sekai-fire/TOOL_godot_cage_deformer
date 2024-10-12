@@ -57,7 +57,6 @@
 #include <cmath>
 #include <vector>
 
-#include <Eigen/Core>
 #include <Eigen/Dense>
 
 namespace BiharmonicCoordinates3D {
