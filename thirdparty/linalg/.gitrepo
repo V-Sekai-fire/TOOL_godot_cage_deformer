@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/sgorsten/linalg.git
+	branch = main
+	commit = 4460f1f5b85ccc81ffcf49aa450d454db58ca90e
+	parent = 1c96c8851bc56521a4c56f8aed636bdb56cf55cc
+	method = merge
+	cmdver = 0.4.9
