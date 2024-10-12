@@ -111,25 +111,6 @@ mat33d MT(mat33d const &p, mat33d const &q) {
 	return p * q.getTranspose() + q * p.getTranspose(); // \mathcal{T}( p ; q ) in the paper.
 }
 
-mat33d get_signed_solid_angle_Hessian_subrouting(point3d const &eta, point3d const &v0, point3d const &v1) {
-	double l0 = (v0 - eta).norm(), l1 = (v1 - eta).norm(), le = (v1 - v0).norm();
-	point3d l0_vec = eta - v0;
-	point3d l1_vec = eta - v1;
-	point3d u0 = l0_vec.direction();
-	point3d u1 = l1_vec.direction();
-
-	mat33d contrib =
-			((l0 + l1) / ((square_t(l0 + l1) - le * le) * l0 * l1)) * (MT(point3d::cross(u1, u0), l0 * u1 + l1 * u0)) + 0.5 * (1.0 / (square_t(l0 + l1 - le)) + 1.0 / (square_t(l0 + l1 + le))) * MT(point3d::cross(u1, u0), u1 + u0);
-
-	return contrib;
-}
-mat33d get_signed_solid_angle_Hessian(point3d const &eta, point3d const &v0, point3d const &v1, point3d const &v2) {
-	return (
-			get_signed_solid_angle_Hessian_subrouting(eta, v0, v1) +
-			get_signed_solid_angle_Hessian_subrouting(eta, v1, v2) +
-			get_signed_solid_angle_Hessian_subrouting(eta, v2, v0));
-}
-
 // HARMONIC PART :
 double h_psi(
 		point3d const &eta,
@@ -1013,16 +994,6 @@ mat33d bh_psi_Hessian_subroutine(point3d const &eta, point3d const &v0, point3d 
 	return contrib;
 }
 
-mat33d bh_psi_Hessian(point3d const &eta, point3d const &v0, point3d const &v1, point3d const &v2) {
-	point3d const &n = point3d::cross(v1 - v0, v2 - v0).direction();
-	double d = point3d::dot(eta - v0, n); // Convention for the signed distance to the triangle: positive above the triangle, simpler to differentiate (no extra minus sign involved)
-	double omega = get_signed_solid_angle(v2 - eta, v0 - eta, v1 - eta);
-	point3d omega_gradient = get_signed_solid_angle_gradient(eta, v0, v1, v2);
-	mat33d omega_Hessian = get_signed_solid_angle_Hessian(eta, v0, v1, v2);
-
-	return (1.0 / (8 * M_PI)) * ((d * omega) * MT(n, n) + (d * d) * MT(n, omega_gradient) + (d * d * d / 3.0) * omega_Hessian + bh_psi_Hessian_subroutine(eta, v0, v1, d, n) + bh_psi_Hessian_subroutine(eta, v1, v2, d, n) + bh_psi_Hessian_subroutine(eta, v2, v0, d, n));
-}
-
 mat33d bh_psi_Hessian_subroutine_inside_triangle(point3d const &eta, point3d const &v0, point3d const &v1, point3d const &n) {
 	point3d const &u_e = (v1 - v0).direction();
 	point3d const &r_e = point3d::cross(n, u_e);
@@ -1141,43 +1112,6 @@ void h_psi_linear(point3d const &eta, point3d const &v0, point3d const &v1, poin
 	psi2 = -2 * point3d::dot(psi_gradient, r2) + gamma2 * psi_SingleHarmonic;
 }
 
-void bh_phi_grad(point3d const &eta, point3d const &v0, point3d const &v1, point3d const &v2,
-		point3d &phi0_grad, point3d &phi1_grad, point3d &phi2_grad) {
-	point3d const &n = point3d::cross(v1 - v0, v2 - v0).direction();
-	double d = point3d::dot(eta - v0, n); // Convention for the signed distance to the triangle: positive above the triangle, simpler to differentiate (no extra minus sign involved)
-
-	point3d t[3] = { v0, v1, v2 };
-	double h_psi;
-	point3d h_psi_grad;
-	h_psi_with_derivatives(eta, &t[0], h_psi, h_psi_grad);
-
-	point3d bh_psi_grad = bh_psi_gradient(eta, v0, v1, v2); // works just as well
-
-	point3d r0 = point3d::cross(n, v2 - v1);
-	r0 /= point3d::dot(r0, v0 - v1);
-	point3d r1 = point3d::cross(n, v0 - v2);
-	r1 /= point3d::dot(r1, v1 - v2);
-	point3d r2 = point3d::cross(n, v1 - v0);
-	r2 /= point3d::dot(r2, v2 - v0);
-
-	double gamma0 = point3d::dot(eta - v1, r0);
-	double gamma1 = point3d::dot(eta - v2, r1);
-	double gamma2 = point3d::dot(eta - v0, r2);
-
-	if (fabs(d) < 0.00000000001) {
-		phi0_grad = -point3d::dot(bh_psi_grad, r0) * n + 0.5 * gamma0 * h_psi * n;
-		phi1_grad = -point3d::dot(bh_psi_grad, r1) * n + 0.5 * gamma1 * h_psi * n;
-		phi2_grad = -point3d::dot(bh_psi_grad, r2) * n + 0.5 * gamma2 * h_psi * n;
-		return;
-	}
-
-	mat33d bh_psi_H = bh_psi_Hessian(eta, v0, v1, v2);
-
-	phi0_grad = -point3d::dot(bh_psi_grad, r0) * n - d * bh_psi_H * r0 + 0.5 * gamma0 * h_psi * n + 0.5 * d * h_psi * r0 + 0.5 * d * gamma0 * h_psi_grad;
-	phi1_grad = -point3d::dot(bh_psi_grad, r1) * n - d * bh_psi_H * r1 + 0.5 * gamma1 * h_psi * n + 0.5 * d * h_psi * r1 + 0.5 * d * gamma1 * h_psi_grad;
-	phi2_grad = -point3d::dot(bh_psi_grad, r2) * n - d * bh_psi_H * r2 + 0.5 * gamma2 * h_psi * n + 0.5 * d * h_psi * r2 + 0.5 * d * gamma2 * h_psi_grad;
-}
-
 void bh_phi_grad_inside_triangle(point3d const &eta, point3d const &v0, point3d const &v1, point3d const &v2,
 		point3d &phi0_grad, point3d &phi1_grad, point3d &phi2_grad) {
 	point3d const &n = point3d::cross(v1 - v0, v2 - v0).direction();
@@ -1206,36 +1140,6 @@ void bh_phi_grad_inside_triangle(point3d const &eta, point3d const &v0, point3d 
 		phi2_grad = -point3d::dot(bh_psi_grad, r2) * n + 0.5 * gamma2 * h_psi * n;
 		return;
 	}
-}
-
-void h_psi_linear_grad(point3d const &eta, point3d const &v0, point3d const &v1, point3d const &v2,
-		point3d &psi0_grad, point3d &psi1_grad, point3d &psi2_grad) {
-	point3d const &n = point3d::cross(v1 - v0, v2 - v0).direction();
-
-	point3d t[3] = { v0, v1, v2 };
-	double h_psi;
-	point3d h_psi_grad;
-	h_psi_with_derivatives(eta, &t[0], h_psi, h_psi_grad);
-
-	//	point3d bh_psi_grad = bh_psi_gradient(eta, v0, v1, v2); // works just as well
-	point3d bh_psi_grad = bh_psi_gradient_in_tangent_plane(eta, v0, v1, v2); // works just as well
-	mat33d bh_psi_H = bh_psi_Hessian(eta, v0, v1, v2);
-
-	point3d r0 = point3d::cross(n, v2 - v1);
-	r0 /= point3d::dot(r0, v0 - v1);
-	point3d r1 = point3d::cross(n, v0 - v2);
-	r1 /= point3d::dot(r1, v1 - v2);
-	point3d r2 = point3d::cross(n, v1 - v0);
-	r2 /= point3d::dot(r2, v2 - v0);
-	// ri is the gradient of gammai
-
-	double gamma0 = point3d::dot(eta - v1, r0);
-	double gamma1 = point3d::dot(eta - v2, r1);
-	double gamma2 = point3d::dot(eta - v0, r2);
-
-	psi0_grad = -2 * bh_psi_H * r0 + gamma0 * h_psi_grad + h_psi * r0;
-	psi1_grad = -2 * bh_psi_H * r1 + gamma1 * h_psi_grad + h_psi * r1;
-	psi2_grad = -2 * bh_psi_H * r2 + gamma2 * h_psi_grad + h_psi * r2;
 }
 
 mat33d bh_phi_Hessian_subroutine(point3d const &eta, point3d const &v0, point3d const &v1, double d, point3d const &n, point3d const &r) {
@@ -1297,40 +1201,6 @@ mat33d bh_phi_Hessian_subroutine(point3d const &eta, point3d const &v0, point3d 
 	return A_H + reste;
 }
 
-void bh_phi_Hessian(point3d const &eta, point3d const &v0, point3d const &v1, point3d const &v2,
-		mat33d &phi0_H, mat33d &phi1_H, mat33d &phi2_H) {
-	point3d const &n = point3d::cross(v1 - v0, v2 - v0).direction();
-	double d = point3d::dot(eta - v0, n); // Convention for the signed distance to the triangle: positive above the triangle, simpler to differentiate (no extra minus sign involved)
-
-	point3d t[3] = { v0, v1, v2 };
-	double h_psi;
-	point3d h_psi_grad;
-	mat33d h_psi_H;
-	h_psi_with_derivatives(eta, &t[0], h_psi, h_psi_grad, h_psi_H);
-
-	mat33d bh_psi_H = bh_psi_Hessian(eta, v0, v1, v2);
-
-	point3d r0 = point3d::cross(n, v2 - v1);
-	r0 /= point3d::dot(r0, v0 - v1);
-	point3d r1 = point3d::cross(n, v0 - v2);
-	r1 /= point3d::dot(r1, v1 - v2);
-	point3d r2 = point3d::cross(n, v1 - v0);
-	r2 /= point3d::dot(r2, v2 - v0);
-
-	double Gamma0 = point3d::dot(eta - v1, r0);
-	double Gamma1 = point3d::dot(eta - v2, r1);
-	double Gamma2 = point3d::dot(eta - v0, r2);
-
-	phi0_H =
-			-MT(mat33d::tensor(n, r0), bh_psi_H) - d * (1.0 / (8 * M_PI)) * (bh_phi_Hessian_subroutine(eta, v0, v1, d, n, r0) + bh_phi_Hessian_subroutine(eta, v1, v2, d, n, r0) + bh_phi_Hessian_subroutine(eta, v2, v0, d, n, r0)) + 0.5 * h_psi * MT(n, r0) + 0.5 * Gamma0 * MT(h_psi_grad, n) + 0.5 * d * MT(h_psi_grad, r0) + 0.5 * d * Gamma0 * h_psi_H;
-
-	phi1_H =
-			-MT(mat33d::tensor(n, r1), bh_psi_H) - (d / (8 * M_PI)) * (bh_phi_Hessian_subroutine(eta, v0, v1, d, n, r1) + bh_phi_Hessian_subroutine(eta, v1, v2, d, n, r1) + bh_phi_Hessian_subroutine(eta, v2, v0, d, n, r1)) + 0.5 * h_psi * MT(n, r1) + 0.5 * Gamma1 * MT(h_psi_grad, n) + 0.5 * d * MT(h_psi_grad, r1) + 0.5 * d * Gamma1 * h_psi_H;
-
-	phi2_H =
-			-MT(mat33d::tensor(n, r2), bh_psi_H) - (d / (8 * M_PI)) * (bh_phi_Hessian_subroutine(eta, v0, v1, d, n, r2) + bh_phi_Hessian_subroutine(eta, v1, v2, d, n, r2) + bh_phi_Hessian_subroutine(eta, v2, v0, d, n, r2)) + 0.5 * h_psi * MT(n, r2) + 0.5 * Gamma2 * MT(h_psi_grad, n) + 0.5 * d * MT(h_psi_grad, r2) + 0.5 * d * Gamma2 * h_psi_H;
-}
-
 void bh_phi_Hessian_inside_triangle(point3d const &eta, point3d const &v0, point3d const &v1, point3d const &v2,
 		mat33d &phi0_H, mat33d &phi1_H, mat33d &phi2_H) {
 	point3d const &n = point3d::cross(v1 - v0, v2 - v0).direction();
@@ -1364,41 +1234,6 @@ void bh_phi_Hessian_inside_triangle(point3d const &eta, point3d const &v0, point
 			-MT(mat33d::tensor(n, r2), bh_psi_H) + 0.5 * h_psi * MT(n, r2) + 0.5 * Gamma2 * MT(h_psi_grad, n);
 }
 
-// Note: highly related to bh_phi_Hessian
-void h_psi_linear_Hessian(point3d const &eta, point3d const &v0, point3d const &v1, point3d const &v2,
-		mat33d &phi0_H, mat33d &phi1_H, mat33d &phi2_H) {
-	point3d const &n = point3d::cross(v1 - v0, v2 - v0).direction();
-	double d = point3d::dot(eta - v0, n); // Convention for the signed distance to the triangle: positive above the triangle, simpler to differentiate (no extra minus sign involved)
-
-	point3d t[3] = { v0, v1, v2 };
-	double h_psi;
-	point3d h_psi_grad;
-	mat33d h_psi_H;
-	h_psi_with_derivatives(eta, &t[0], h_psi, h_psi_grad, h_psi_H);
-
-	mat33d bh_psi_H = bh_psi_Hessian(eta, v0, v1, v2);
-
-	point3d r0 = point3d::cross(n, v2 - v1);
-	r0 /= point3d::dot(r0, v0 - v1);
-	point3d r1 = point3d::cross(n, v0 - v2);
-	r1 /= point3d::dot(r1, v1 - v2);
-	point3d r2 = point3d::cross(n, v1 - v0);
-	r2 /= point3d::dot(r2, v2 - v0);
-
-	double Gamma0 = point3d::dot(eta - v1, r0);
-	double Gamma1 = point3d::dot(eta - v2, r1);
-	double Gamma2 = point3d::dot(eta - v0, r2);
-
-	phi0_H =
-			-2 * (1.0 / (8 * M_PI)) * (bh_phi_Hessian_subroutine(eta, v0, v1, d, n, r0) + bh_phi_Hessian_subroutine(eta, v1, v2, d, n, r0) + bh_phi_Hessian_subroutine(eta, v2, v0, d, n, r0)) + MT(h_psi_grad, r0) + Gamma0 * h_psi_H;
-
-	phi1_H =
-			-(2 / (8 * M_PI)) * (bh_phi_Hessian_subroutine(eta, v0, v1, d, n, r1) + bh_phi_Hessian_subroutine(eta, v1, v2, d, n, r1) + bh_phi_Hessian_subroutine(eta, v2, v0, d, n, r1)) + MT(h_psi_grad, r1) + Gamma1 * h_psi_H;
-
-	phi2_H =
-			-(2 / (8 * M_PI)) * (bh_phi_Hessian_subroutine(eta, v0, v1, d, n, r2) + bh_phi_Hessian_subroutine(eta, v1, v2, d, n, r2) + bh_phi_Hessian_subroutine(eta, v2, v0, d, n, r2)) + MT(h_psi_grad, r2) + Gamma2 * h_psi_H;
-}
-
 void compute_h_bh_coordinates(point3d const &eta, point3d const &v0, point3d const &v1, point3d const &v2,
 		double &h_psi_, double *h_phi_,
 		double &bh_psi_, double *bh_phi_) {
@@ -1408,40 +1243,6 @@ void compute_h_bh_coordinates(point3d const &eta, point3d const &v0, point3d con
 	// Biharmonic part:
 	bh_psi_ = bh_psi(eta, v0, v1, v2);
 	bh_phi(eta, v0, v1, v2, bh_phi_[0], bh_phi_[1], bh_phi_[2]);
-}
-
-void compute_h_bh_coordinates_with_derivatives(point3d const &eta, point3d const &v0, point3d const &v1, point3d const &v2,
-		double &h_psi_, double *h_phi_,
-		double &bh_psi_, double *bh_phi_,
-		point3d &h_psi_grad_, point3d *h_phi_grad_,
-		point3d &bh_psi_grad_, point3d *bh_phi_grad_) {
-	point3d t[3] = { v0, v1, v2 };
-	h_coordinates_with_derivatives(eta, &(t[0]), h_psi_, h_phi_, h_psi_grad_, h_phi_grad_);
-
-	// Biharmonic part:
-	bh_psi_ = bh_psi(eta, v0, v1, v2);
-	bh_phi(eta, v0, v1, v2, bh_phi_[0], bh_phi_[1], bh_phi_[2]);
-	bh_psi_grad_ = bh_psi_gradient(eta, v0, v1, v2);
-	bh_phi_grad(eta, v0, v1, v2, bh_phi_grad_[0], bh_phi_grad_[1], bh_phi_grad_[2]);
-}
-
-void compute_h_bh_coordinates_with_derivatives(point3d const &eta, point3d const &v0, point3d const &v1, point3d const &v2,
-		double &h_psi_, double *h_phi_,
-		double &bh_psi_, double *bh_phi_,
-		point3d &h_psi_grad_, point3d *h_phi_grad_,
-		point3d &bh_psi_grad_, point3d *bh_phi_grad_,
-		mat33d &h_psi_H_, mat33d *h_phi_H_,
-		mat33d &bh_psi_H_, mat33d *bh_phi_H_) {
-	point3d t[3] = { v0, v1, v2 };
-	h_coordinates_with_derivatives(eta, &(t[0]), h_psi_, h_phi_, h_psi_grad_, h_phi_grad_, h_psi_H_, h_phi_H_);
-
-	// Biharmonic part:
-	bh_psi_ = bh_psi(eta, v0, v1, v2);
-	bh_phi(eta, v0, v1, v2, bh_phi_[0], bh_phi_[1], bh_phi_[2]);
-	bh_psi_grad_ = bh_psi_gradient(eta, v0, v1, v2);
-	bh_phi_grad(eta, v0, v1, v2, bh_phi_grad_[0], bh_phi_grad_[1], bh_phi_grad_[2]);
-	bh_psi_H_ = bh_psi_Hessian(eta, v0, v1, v2);
-	bh_phi_Hessian(eta, v0, v1, v2, bh_phi_H_[0], bh_phi_H_[1], bh_phi_H_[2]);
 }
 
 void compute_h_bh_coordinates_with_derivatives_inside_triangle(point3d const &eta, point3d const &v0, point3d const &v1, point3d const &v2,
@@ -1709,333 +1510,10 @@ void computeCoordinatesOnCageTriangles(
 	}
 }
 
-template <class int_t>
-void computeCoordinatesAndDerivativesOnCageTriangles(
-		std::vector<std::vector<int_t>> const &cage_triangles, std::vector<point3d> const &cage_vertices,
-		std::vector<SampleOnTri> &samples_on_cage_triangles,
-		std::vector<std::vector<double>> &_h_phi, std::vector<std::vector<double>> &_h_psi,
-		std::vector<std::vector<double>> &_bh_phi, std::vector<std::vector<double>> &_bh_psi,
-		std::vector<std::vector<point3d>> &_h_grad_phi, std::vector<std::vector<point3d>> &_h_grad_psi,
-		std::vector<std::vector<point3d>> &_bh_grad_phi, std::vector<std::vector<point3d>> &_bh_grad_psi,
-		std::vector<std::vector<mat33d>> &_h_H_phi, std::vector<std::vector<mat33d>> &_h_H_psi,
-		std::vector<std::vector<mat33d>> &_bh_H_phi, std::vector<std::vector<mat33d>> &_bh_H_psi) {
-	_h_phi.clear();
-	_h_phi.resize(samples_on_cage_triangles.size());
-	_h_psi.clear();
-	_h_psi.resize(samples_on_cage_triangles.size());
-	_bh_phi.clear();
-	_bh_phi.resize(samples_on_cage_triangles.size());
-	_bh_psi.clear();
-	_bh_psi.resize(samples_on_cage_triangles.size());
-
-	_h_grad_phi.clear();
-	_h_grad_phi.resize(samples_on_cage_triangles.size());
-	_h_grad_psi.clear();
-	_h_grad_psi.resize(samples_on_cage_triangles.size());
-	_bh_grad_phi.clear();
-	_bh_grad_phi.resize(samples_on_cage_triangles.size());
-	_bh_grad_psi.clear();
-	_bh_grad_psi.resize(samples_on_cage_triangles.size());
-
-	_h_H_phi.clear();
-	_h_H_phi.resize(samples_on_cage_triangles.size());
-	_h_H_psi.clear();
-	_h_H_psi.resize(samples_on_cage_triangles.size());
-	_bh_H_phi.clear();
-	_bh_H_phi.resize(samples_on_cage_triangles.size());
-	_bh_H_psi.clear();
-	_bh_H_psi.resize(samples_on_cage_triangles.size());
-
-#pragma omp parallel for
-	for (unsigned int sIt = 0; sIt < samples_on_cage_triangles.size(); ++sIt) {
-		auto &sample = samples_on_cage_triangles[sIt];
-		point3d const &eta = sample.eta;
-
-		_h_phi[sIt].clear();
-		_h_phi[sIt].resize(cage_vertices.size());
-		_h_psi[sIt].clear();
-		_h_psi[sIt].resize(cage_triangles.size());
-		_bh_phi[sIt].clear();
-		_bh_phi[sIt].resize(cage_vertices.size());
-		_bh_psi[sIt].clear();
-		_bh_psi[sIt].resize(cage_triangles.size());
-
-		_h_grad_phi[sIt].clear();
-		_h_grad_phi[sIt].resize(cage_vertices.size());
-		_h_grad_psi[sIt].clear();
-		_h_grad_psi[sIt].resize(cage_triangles.size());
-		_bh_grad_phi[sIt].clear();
-		_bh_grad_phi[sIt].resize(cage_vertices.size());
-		_bh_grad_psi[sIt].clear();
-		_bh_grad_psi[sIt].resize(cage_triangles.size());
-
-		_h_H_phi[sIt].clear();
-		_h_H_phi[sIt].resize(cage_vertices.size());
-		_h_H_psi[sIt].clear();
-		_h_H_psi[sIt].resize(cage_triangles.size());
-		_bh_H_phi[sIt].clear();
-		_bh_H_phi[sIt].resize(cage_vertices.size());
-		_bh_H_psi[sIt].clear();
-		_bh_H_psi[sIt].resize(cage_triangles.size());
-
-		/**/
-		// iterate over the triangles:
-		for (unsigned int t = 0; t < cage_triangles.size(); ++t) {
-			double h_psi_ = 0;
-			double h_phi_[3] = { 0, 0, 0 };
-			double bh_psi_ = 0;
-			double bh_phi_[3] = { 0, 0, 0 };
-			point3d h_grad_psi_;
-			point3d h_grad_phi_[3];
-			point3d bh_grad_psi_;
-			point3d bh_grad_phi_[3];
-			mat33d h_H_psi_;
-			mat33d h_H_phi_[3];
-			mat33d bh_H_psi_;
-			mat33d bh_H_phi_[3];
-			point3d tri[3] = { cage_vertices[cage_triangles[t][0]], cage_vertices[cage_triangles[t][1]], cage_vertices[cage_triangles[t][2]] };
-
-			point3d t0 = cage_vertices[cage_triangles[t][0]];
-			point3d t1 = cage_vertices[cage_triangles[t][1]];
-			point3d t2 = cage_vertices[cage_triangles[t][2]];
-
-			if (t == sample.tri) {
-				compute_h_bh_coordinates_with_derivatives_inside_triangle(eta, tri[0], tri[1], tri[2],
-						h_psi_, h_phi_, bh_psi_, bh_phi_,
-						h_grad_psi_, h_grad_phi_, bh_grad_psi_, bh_grad_phi_,
-						h_H_psi_, h_H_phi_, bh_H_psi_, bh_H_phi_);
-			} else {
-				compute_h_bh_coordinates_with_derivatives(eta, tri[0], tri[1], tri[2],
-						h_psi_, h_phi_, bh_psi_, bh_phi_,
-						h_grad_psi_, h_grad_phi_, bh_grad_psi_, bh_grad_phi_,
-						h_H_psi_, h_H_phi_, bh_H_psi_, bh_H_phi_);
-			}
-
-			_h_psi[sIt][t] = h_psi_;
-			_bh_psi[sIt][t] = bh_psi_;
-			for (unsigned int c = 0; c < 3; ++c)
-				_h_phi[sIt][cage_triangles[t][c]] += h_phi_[c];
-			for (unsigned int c = 0; c < 3; ++c)
-				_bh_phi[sIt][cage_triangles[t][c]] += bh_phi_[c];
-
-			_h_grad_psi[sIt][t] = h_grad_psi_;
-			_bh_grad_psi[sIt][t] = bh_grad_psi_;
-			for (unsigned int c = 0; c < 3; ++c)
-				_h_grad_phi[sIt][cage_triangles[t][c]] += h_grad_phi_[c];
-			for (unsigned int c = 0; c < 3; ++c)
-				_bh_grad_phi[sIt][cage_triangles[t][c]] += bh_grad_phi_[c];
-
-			_h_H_psi[sIt][t] = h_H_psi_;
-			_bh_H_psi[sIt][t] = bh_H_psi_;
-			for (unsigned int c = 0; c < 3; ++c)
-				_h_H_phi[sIt][cage_triangles[t][c]] += h_H_phi_[c];
-			for (unsigned int c = 0; c < 3; ++c)
-				_bh_H_phi[sIt][cage_triangles[t][c]] += bh_H_phi_[c];
-		}
-		/**/
-	}
-}
-
-template <class int_t>
-void computeHarmonicCoordinatesNormalDerivativesOnCageTriangleCenters(
-		std::vector<std::vector<int_t>> const &cage_triangles, std::vector<point3d> const &cage_vertices,
-		std::vector<std::vector<double>> &_h_phi_normal_deriv, std::vector<std::vector<double>> &_h_psi_normal_deriv) {
-	_h_phi_normal_deriv.clear();
-	_h_phi_normal_deriv.resize(cage_triangles.size());
-	_h_psi_normal_deriv.clear();
-	_h_psi_normal_deriv.resize(cage_triangles.size());
-
-#pragma omp parallel for
-	for (int tPIt = 0; tPIt < cage_triangles.size(); ++tPIt) {
-		point3d const &t0 = cage_vertices[cage_triangles[tPIt][0]];
-		point3d const &t1 = cage_vertices[cage_triangles[tPIt][1]];
-		point3d const &t2 = cage_vertices[cage_triangles[tPIt][2]];
-		point3d const &eta = (t0 + t1 + t2) / 3;
-		point3d const &tN = point3d::cross(t1 - t0, t2 - t0).direction();
-
-		_h_phi_normal_deriv[tPIt].clear();
-		_h_phi_normal_deriv[tPIt].resize(cage_vertices.size(), 0.0);
-		_h_psi_normal_deriv[tPIt].clear();
-		_h_psi_normal_deriv[tPIt].resize(cage_triangles.size(), 0.0);
-
-		// iterate over the triangles:
-		for (unsigned int t = 0; t < cage_triangles.size(); ++t) {
-			double h_psi_normalDeriv;
-			double h_phi_normalDeriv[3];
-			// DO NOT MISTAKE THE TRIANGLE WHERE YOU CONSIDER ETA AND THE TRIANGLES FOR SURFACE INTEGRATION !!!!
-			point3d triT[3] = { cage_vertices[cage_triangles[t][0]], cage_vertices[cage_triangles[t][1]], cage_vertices[cage_triangles[t][2]] };
-
-			if (t == tPIt) {
-				h_coordinates_normal_derivatives_inside_triangle(eta, triT, h_psi_normalDeriv, h_phi_normalDeriv);
-			} else {
-				double psi;
-				double phi[3];
-				point3d psi_grad;
-				point3d phi_grad[3];
-				h_coordinates_with_derivatives(eta, triT, psi, phi, psi_grad, phi_grad);
-				h_psi_normalDeriv = point3d::dot(psi_grad, tN);
-				for (unsigned int c = 0; c < 3; ++c)
-					h_phi_normalDeriv[c] = point3d::dot(phi_grad[c], tN);
-			}
-
-			_h_psi_normal_deriv[tPIt][t] = h_psi_normalDeriv;
-			for (unsigned int c = 0; c < 3; ++c)
-				_h_phi_normal_deriv[tPIt][cage_triangles[t][c]] += h_phi_normalDeriv[c];
-		}
-	}
-}
-
-template <class int_t>
-void computeCoordinatesAndDerivatives(
-		point3d const &eta,
-		std::vector<std::vector<int_t>> const &cage_triangles, std::vector<point3d> const &cage_vertices,
-		std::vector<double> &_h_phi, std::vector<double> &_h_psi,
-		std::vector<double> &_bh_phi, std::vector<double> &_bh_psi,
-		std::vector<point3d> &_h_phi_gradient, std::vector<point3d> &_h_psi_gradient,
-		std::vector<point3d> &_bh_phi_gradient, std::vector<point3d> &_bh_psi_gradient) {
-	_h_phi.clear();
-	_h_phi.resize(cage_vertices.size(), 0.0);
-	_h_psi.clear();
-	_h_psi.resize(cage_triangles.size(), 0.0);
-
-	_bh_phi.clear();
-	_bh_phi.resize(cage_vertices.size(), 0.0);
-	_bh_psi.clear();
-	_bh_psi.resize(cage_triangles.size(), 0.0);
-
-	_h_phi_gradient.clear();
-	_h_phi_gradient.resize(cage_vertices.size(), point3d(0.0, 0.0, 0.0));
-	_h_psi_gradient.clear();
-	_h_psi_gradient.resize(cage_triangles.size(), point3d(0.0, 0.0, 0.0));
-
-	_bh_phi_gradient.clear();
-	_bh_phi_gradient.resize(cage_vertices.size(), point3d(0.0, 0.0, 0.0));
-	_bh_psi_gradient.clear();
-	_bh_psi_gradient.resize(cage_triangles.size(), point3d(0.0, 0.0, 0.0));
-
-	// iterate over the triangles:
-	for (unsigned int t = 0; t < cage_triangles.size(); ++t) {
-		double h_psi_;
-		double h_phi_[3];
-		point3d h_psi_grad_;
-		point3d h_phi_grad_[3];
-
-		double bh_psi_;
-		double bh_phi_[3];
-		point3d bh_psi_grad_;
-		point3d bh_phi_grad_[3];
-
-		compute_h_bh_coordinates_with_derivatives(eta, cage_vertices[cage_triangles[t][0]], cage_vertices[cage_triangles[t][1]], cage_vertices[cage_triangles[t][2]],
-				h_psi_, &(h_phi_[0]), bh_psi_, &(bh_phi_[0]), h_psi_grad_, &(h_phi_grad_[0]), bh_psi_grad_, &(bh_phi_grad_[0]));
-
-		_h_psi[t] = h_psi_;
-		for (unsigned int c = 0; c < 3; ++c)
-			_h_phi[cage_triangles[t][c]] += h_phi_[c];
-
-		_bh_psi[t] = bh_psi_;
-		for (unsigned int c = 0; c < 3; ++c)
-			_bh_phi[cage_triangles[t][c]] += bh_phi_[c];
-
-		_h_psi_gradient[t] = h_psi_grad_;
-		for (unsigned int c = 0; c < 3; ++c)
-			_h_phi_gradient[cage_triangles[t][c]] += h_phi_grad_[c];
-
-		_bh_psi_gradient[t] = bh_psi_grad_;
-		for (unsigned int c = 0; c < 3; ++c)
-			_bh_phi_gradient[cage_triangles[t][c]] += bh_phi_grad_[c];
-	}
-}
-
 //--------------------------------------------------------------------------------------------//
 //--------------------------------------------------------------------------------------------//
 //--------------------------------------------------------------------------------------------//
 //--------------------------------------------------------------------------------------------//
-
-// Unconstrained Biharmonic coordinates and derivatives:
-template <class int_t>
-void computeCoordinatesAndDerivatives(
-		point3d const &eta,
-		std::vector<std::vector<int_t>> const &cage_triangles, std::vector<point3d> const &cage_vertices,
-		std::vector<double> &_h_phi, std::vector<double> &_h_psi,
-		std::vector<double> &_bh_phi, std::vector<double> &_bh_psi,
-		std::vector<point3d> &_h_phi_gradient, std::vector<point3d> &_h_psi_gradient,
-		std::vector<point3d> &_bh_phi_gradient, std::vector<point3d> &_bh_psi_gradient,
-		std::vector<mat33d> &_h_phi_Hessian, std::vector<mat33d> &_h_psi_Hessian,
-		std::vector<mat33d> &_bh_phi_Hessian, std::vector<mat33d> &_bh_psi_Hessian) {
-	_h_phi.clear();
-	_h_phi.resize(cage_vertices.size(), 0.0);
-	_h_psi.clear();
-	_h_psi.resize(cage_triangles.size(), 0.0);
-
-	_bh_phi.clear();
-	_bh_phi.resize(cage_vertices.size(), 0.0);
-	_bh_psi.clear();
-	_bh_psi.resize(cage_triangles.size(), 0.0);
-
-	_h_phi_gradient.clear();
-	_h_phi_gradient.resize(cage_vertices.size(), point3d(0.0, 0.0, 0.0));
-	_h_psi_gradient.clear();
-	_h_psi_gradient.resize(cage_triangles.size(), point3d(0.0, 0.0, 0.0));
-
-	_bh_phi_gradient.clear();
-	_bh_phi_gradient.resize(cage_vertices.size(), point3d(0.0, 0.0, 0.0));
-	_bh_psi_gradient.clear();
-	_bh_psi_gradient.resize(cage_triangles.size(), point3d(0.0, 0.0, 0.0));
-
-	_h_phi_Hessian.clear();
-	_h_phi_Hessian.resize(cage_vertices.size(), mat33d(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0));
-	_h_psi_Hessian.clear();
-	_h_psi_Hessian.resize(cage_triangles.size(), mat33d(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0));
-
-	_bh_phi_Hessian.clear();
-	_bh_phi_Hessian.resize(cage_vertices.size(), mat33d(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0));
-	_bh_psi_Hessian.clear();
-	_bh_psi_Hessian.resize(cage_triangles.size(), mat33d(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0));
-
-	// iterate over the triangles:
-	for (unsigned int t = 0; t < cage_triangles.size(); ++t) {
-		double h_psi_;
-		double h_phi_[3];
-		point3d h_psi_grad_;
-		point3d h_phi_grad_[3];
-		mat33d h_psi_H_;
-		mat33d h_phi_H_[3];
-
-		double bh_psi_;
-		double bh_phi_[3];
-		point3d bh_psi_grad_;
-		point3d bh_phi_grad_[3];
-		mat33d bh_psi_H_;
-		mat33d bh_phi_H_[3];
-
-		compute_h_bh_coordinates_with_derivatives(eta, cage_vertices[cage_triangles[t][0]], cage_vertices[cage_triangles[t][1]], cage_vertices[cage_triangles[t][2]],
-				h_psi_, &(h_phi_[0]), bh_psi_, &(bh_phi_[0]), h_psi_grad_, &(h_phi_grad_[0]), bh_psi_grad_, &(bh_phi_grad_[0]), h_psi_H_, &(h_phi_H_[0]), bh_psi_H_, &(bh_phi_H_[0]));
-
-		_h_psi[t] = h_psi_;
-		for (unsigned int c = 0; c < 3; ++c)
-			_h_phi[cage_triangles[t][c]] += h_phi_[c];
-
-		_bh_psi[t] = bh_psi_;
-		for (unsigned int c = 0; c < 3; ++c)
-			_bh_phi[cage_triangles[t][c]] += bh_phi_[c];
-
-		_h_psi_gradient[t] = h_psi_grad_;
-		for (unsigned int c = 0; c < 3; ++c)
-			_h_phi_gradient[cage_triangles[t][c]] += h_phi_grad_[c];
-
-		_bh_psi_gradient[t] = bh_psi_grad_;
-		for (unsigned int c = 0; c < 3; ++c)
-			_bh_phi_gradient[cage_triangles[t][c]] += bh_phi_grad_[c];
-
-		_h_psi_Hessian[t] = h_psi_H_;
-		for (unsigned int c = 0; c < 3; ++c)
-			_h_phi_Hessian[cage_triangles[t][c]] += h_phi_H_[c];
-
-		_bh_psi_Hessian[t] = bh_psi_H_;
-		for (unsigned int c = 0; c < 3; ++c)
-			_bh_phi_Hessian[cage_triangles[t][c]] += bh_phi_H_[c];
-	}
-}
 
 template <class int_t>
 void computeConstrainedBiharmonicMatrices_13(
