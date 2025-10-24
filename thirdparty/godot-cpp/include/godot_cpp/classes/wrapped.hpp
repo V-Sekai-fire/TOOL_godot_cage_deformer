@@ -28,8 +28,7 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef GODOT_WRAPPED_HPP
-#define GODOT_WRAPPED_HPP
+#pragma once
 
 #include <godot_cpp/core/memory.hpp>
 
@@ -39,6 +38,14 @@
 #include <godot_cpp/templates/vector.hpp>
 
 #include <godot_cpp/godot.hpp>
+
+#if defined(MACOS_ENABLED) && defined(HOT_RELOAD_ENABLED)
+#include <mutex>
+#define _GODOT_CPP_AVOID_THREAD_LOCAL
+#define _GODOT_CPP_THREAD_LOCAL
+#else
+#define _GODOT_CPP_THREAD_LOCAL thread_local
+#endif
 
 namespace godot {
 
@@ -58,8 +65,16 @@ class Wrapped {
 	template <typename T, std::enable_if_t<std::is_base_of<::godot::Wrapped, T>::value, bool>>
 	friend _ALWAYS_INLINE_ void _pre_initialize();
 
-	thread_local static const StringName *_constructing_extension_class_name;
-	thread_local static const GDExtensionInstanceBindingCallbacks *_constructing_class_binding_callbacks;
+#ifdef _GODOT_CPP_AVOID_THREAD_LOCAL
+	static std::recursive_mutex _constructing_mutex;
+#endif
+
+	_GODOT_CPP_THREAD_LOCAL static const StringName *_constructing_extension_class_name;
+	_GODOT_CPP_THREAD_LOCAL static const GDExtensionInstanceBindingCallbacks *_constructing_class_binding_callbacks;
+
+#ifdef HOT_RELOAD_ENABLED
+	_GODOT_CPP_THREAD_LOCAL static GDExtensionObjectPtr _constructing_recreate_owner;
+#endif
 
 	template <typename T>
 	_ALWAYS_INLINE_ static void _set_construct_info() {
@@ -71,15 +86,6 @@ protected:
 	virtual bool _is_extension_class() const { return false; }
 	static const StringName *_get_extension_class_name(); // This is needed to retrieve the class name before the godot object has its _extension and _extension_instance members assigned.
 
-#ifdef HOT_RELOAD_ENABLED
-	struct RecreateInstance {
-		GDExtensionClassInstancePtr wrapper;
-		GDExtensionObjectPtr owner;
-		RecreateInstance *next;
-	};
-	inline static RecreateInstance *recreate_instance = nullptr;
-#endif
-
 	void _notification(int p_what) {}
 	bool _set(const StringName &p_name, const Variant &p_property) { return false; }
 	bool _get(const StringName &p_name, Variant &r_property) const { return false; }
@@ -87,7 +93,7 @@ protected:
 	bool _property_can_revert(const StringName &p_name) const { return false; }
 	bool _property_get_revert(const StringName &p_name, Variant &r_property) const { return false; }
 	void _validate_property(PropertyInfo &p_property) const {}
-	String _to_string() const { return "[" + String(get_class_static()) + ":" + itos(get_instance_id()) + "]"; }
+	String _to_string() const { return "<Wrapped#0>"; }
 
 	static void notification_bind(GDExtensionClassInstancePtr p_instance, int32_t p_what, GDExtensionBool p_reversed) {}
 	static GDExtensionBool set_bind(GDExtensionClassInstancePtr p_instance, GDExtensionConstStringNamePtr p_name, GDExtensionConstVariantPtr p_value) { return false; }
@@ -104,9 +110,8 @@ protected:
 	::godot::List<::godot::PropertyInfo> plist_owned;
 
 	void _postinitialize();
-	virtual void _notificationv(int32_t p_what, bool p_reversed = false) {}
 
-	Wrapped(const StringName p_godot_class);
+	Wrapped(const StringName &p_godot_class);
 	Wrapped(GodotObject *p_godot_object);
 	virtual ~Wrapped() {}
 
@@ -116,16 +121,15 @@ public:
 		return string_name;
 	}
 
-	uint64_t get_instance_id() const {
-		return 0;
-	}
-
 	// Must be public but you should not touch this.
 	GodotObject *_owner = nullptr;
 };
 
 template <typename T, std::enable_if_t<std::is_base_of<::godot::Wrapped, T>::value, bool>>
 _ALWAYS_INLINE_ void _pre_initialize() {
+#ifdef _GODOT_CPP_AVOID_THREAD_LOCAL
+	Wrapped::_constructing_mutex.lock();
+#endif
 	Wrapped::_set_construct_info<T>();
 }
 
@@ -184,7 +188,9 @@ private:                                                                        
 	friend class ::godot::Wrapped;                                                                                                                                                     \
                                                                                                                                                                                        \
 protected:                                                                                                                                                                             \
-	virtual bool _is_extension_class() const override { return true; }                                                                                                                 \
+	virtual bool _is_extension_class() const override {                                                                                                                                \
+		return true;                                                                                                                                                                   \
+	}                                                                                                                                                                                  \
                                                                                                                                                                                        \
 	static const ::godot::StringName *_get_extension_class_name() {                                                                                                                    \
 		const ::godot::StringName &string_name = get_class_static();                                                                                                                   \
@@ -196,35 +202,35 @@ protected:                                                                      
 	}                                                                                                                                                                                  \
                                                                                                                                                                                        \
 	static void (::godot::Wrapped::*_get_notification())(int) {                                                                                                                        \
-		return (void(::godot::Wrapped::*)(int)) & m_class::_notification;                                                                                                              \
+		return (void (::godot::Wrapped::*)(int)) & m_class::_notification;                                                                                                             \
 	}                                                                                                                                                                                  \
                                                                                                                                                                                        \
 	static bool (::godot::Wrapped::*_get_set())(const ::godot::StringName &p_name, const ::godot::Variant &p_property) {                                                               \
-		return (bool(::godot::Wrapped::*)(const ::godot::StringName &p_name, const ::godot::Variant &p_property)) & m_class::_set;                                                     \
+		return (bool (::godot::Wrapped::*)(const ::godot::StringName &p_name, const ::godot::Variant &p_property)) & m_class::_set;                                                    \
 	}                                                                                                                                                                                  \
                                                                                                                                                                                        \
 	static bool (::godot::Wrapped::*_get_get())(const ::godot::StringName &p_name, ::godot::Variant &r_ret) const {                                                                    \
-		return (bool(::godot::Wrapped::*)(const ::godot::StringName &p_name, ::godot::Variant &r_ret) const) & m_class::_get;                                                          \
+		return (bool (::godot::Wrapped::*)(const ::godot::StringName &p_name, ::godot::Variant &r_ret) const) & m_class::_get;                                                         \
 	}                                                                                                                                                                                  \
                                                                                                                                                                                        \
 	static void (::godot::Wrapped::*_get_get_property_list())(::godot::List<::godot::PropertyInfo> * p_list) const {                                                                   \
-		return (void(::godot::Wrapped::*)(::godot::List<::godot::PropertyInfo> * p_list) const) & m_class::_get_property_list;                                                         \
+		return (void (::godot::Wrapped::*)(::godot::List<::godot::PropertyInfo> * p_list) const) & m_class::_get_property_list;                                                        \
 	}                                                                                                                                                                                  \
                                                                                                                                                                                        \
 	static bool (::godot::Wrapped::*_get_property_can_revert())(const ::godot::StringName &p_name) const {                                                                             \
-		return (bool(::godot::Wrapped::*)(const ::godot::StringName &p_name) const) & m_class::_property_can_revert;                                                                   \
+		return (bool (::godot::Wrapped::*)(const ::godot::StringName &p_name) const) & m_class::_property_can_revert;                                                                  \
 	}                                                                                                                                                                                  \
                                                                                                                                                                                        \
 	static bool (::godot::Wrapped::*_get_property_get_revert())(const ::godot::StringName &p_name, ::godot::Variant &) const {                                                         \
-		return (bool(::godot::Wrapped::*)(const ::godot::StringName &p_name, ::godot::Variant &) const) & m_class::_property_get_revert;                                               \
+		return (bool (::godot::Wrapped::*)(const ::godot::StringName &p_name, ::godot::Variant &) const) & m_class::_property_get_revert;                                              \
 	}                                                                                                                                                                                  \
                                                                                                                                                                                        \
 	static void (::godot::Wrapped::*_get_validate_property())(::godot::PropertyInfo & p_property) const {                                                                              \
-		return (void(::godot::Wrapped::*)(::godot::PropertyInfo & p_property) const) & m_class::_validate_property;                                                                    \
+		return (void (::godot::Wrapped::*)(::godot::PropertyInfo & p_property) const) & m_class::_validate_property;                                                                   \
 	}                                                                                                                                                                                  \
                                                                                                                                                                                        \
 	static ::godot::String (::godot::Wrapped::*_get_to_string())() const {                                                                                                             \
-		return (::godot::String(::godot::Wrapped::*)() const) & m_class::_to_string;                                                                                                   \
+		return (::godot::String (::godot::Wrapped::*)() const) & m_class::_to_string;                                                                                                  \
 	}                                                                                                                                                                                  \
                                                                                                                                                                                        \
 	template <typename T, typename B>                                                                                                                                                  \
@@ -250,7 +256,7 @@ public:                                                                         
 	}                                                                                                                                                                                  \
                                                                                                                                                                                        \
 	static const ::godot::StringName &get_class_static() {                                                                                                                             \
-		static const ::godot::StringName string_name = ::godot::StringName(#m_class);                                                                                                  \
+		static const ::godot::StringName string_name = ::godot::StringName(U## #m_class);                                                                                              \
 		return string_name;                                                                                                                                                            \
 	}                                                                                                                                                                                  \
                                                                                                                                                                                        \
@@ -398,11 +404,6 @@ public:                                                                         
 		_gde_binding_reference_callback,                                                                                                                                               \
 	};                                                                                                                                                                                 \
                                                                                                                                                                                        \
-protected:                                                                                                                                                                             \
-	virtual void _notificationv(int32_t p_what, bool p_reversed = false) override {                                                                                                    \
-		m_class::notification_bind(this, p_what, p_reversed);                                                                                                                          \
-	}                                                                                                                                                                                  \
-                                                                                                                                                                                       \
 private:
 
 // Don't use this for your classes, use GDCLASS() instead.
@@ -501,14 +502,9 @@ private:
 // Don't use this for your classes, use GDCLASS() instead.
 #define GDEXTENSION_CLASS(m_class, m_inherits) GDEXTENSION_CLASS_ALIAS(m_class, m_class, m_inherits)
 
-#define GDVIRTUAL_CALL(m_name, ...) _gdvirtual_##m_name##_call<false>(__VA_ARGS__)
-#define GDVIRTUAL_CALL_PTR(m_obj, m_name, ...) m_obj->_gdvirtual_##m_name##_call<false>(__VA_ARGS__)
-
-#define GDVIRTUAL_REQUIRED_CALL(m_name, ...) _gdvirtual_##m_name##_call<true>(__VA_ARGS__)
-#define GDVIRTUAL_REQUIRED_CALL_PTR(m_obj, m_name, ...) m_obj->_gdvirtual_##m_name##_call<true>(__VA_ARGS__)
+#define GDVIRTUAL_CALL(m_name, ...) _gdvirtual_##m_name##_call(__VA_ARGS__)
+#define GDVIRTUAL_CALL_PTR(m_obj, m_name, ...) m_obj->_gdvirtual_##m_name##_call(__VA_ARGS__)
 
 #define GDVIRTUAL_BIND(m_name, ...) ::godot::ClassDB::add_virtual_method(get_class_static(), _gdvirtual_##m_name##_get_method_info(), ::godot::snarray(__VA_ARGS__));
 #define GDVIRTUAL_IS_OVERRIDDEN(m_name) _gdvirtual_##m_name##_overridden()
 #define GDVIRTUAL_IS_OVERRIDDEN_PTR(m_obj, m_name) m_obj->_gdvirtual_##m_name##_overridden()
-
-#endif // GODOT_WRAPPED_HPP

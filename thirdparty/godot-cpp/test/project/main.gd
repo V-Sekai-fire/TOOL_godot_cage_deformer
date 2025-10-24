@@ -18,8 +18,7 @@ func _ready():
 
 	# To string.
 	assert_equal(example.to_string(),'[ GDExtension::Example <--> Instance ID:%s ]' % example.get_instance_id())
-	# It appears there's a bug with instance ids :-(
-	#assert_equal($Example/ExampleMin.to_string(), 'ExampleMin:[Wrapped:%s]' % $Example/ExampleMin.get_instance_id())
+	assert_equal($Example/ExampleMin.to_string(), 'ExampleMin:<ExampleMin#%s>' % $Example/ExampleMin.get_instance_id())
 
 	# Call static methods.
 	assert_equal(Example.test_static(9, 100), 109);
@@ -81,10 +80,13 @@ func _ready():
 
 	# Array and Dictionary
 	assert_equal(example.test_array(), [1, 2])
-	assert_equal(example.test_tarray(), [ Vector2(1, 2), Vector2(2, 3) ])
-	assert_equal(example.test_dictionary(), {"hello": "world", "foo": "bar"})
+	assert_equal(example.test_tarray(), [Vector2(1, 2), Vector2(2, 3)])
 	var array: Array[int] = [1, 2, 3]
 	assert_equal(example.test_tarray_arg(array), 6)
+	assert_equal(example.test_dictionary(), { "hello": "world", "foo": "bar" })
+	assert_equal(example.test_tdictionary(), { Vector2(1, 2): Vector2i(2, 3) })
+	var dictionary: Dictionary[String, int] = { "1": 1, "2": 2, "3": 3 }
+	assert_equal(example.test_tdictionary_arg(dictionary), 6)
 
 	example.callable_bind()
 	assert_equal(custom_signal_emitted, ["bound", 11])
@@ -206,6 +208,12 @@ func _ready():
 	assert_equal(example.test_variant_float_conversion(10.0), 10.0)
 	assert_equal(example.test_variant_float_conversion(10), 10.0)
 
+	# Test checking if objects are valid.
+	var object_of_questionable_validity = Object.new()
+	assert_equal(example.test_object_is_valid(object_of_questionable_validity), true)
+	object_of_questionable_validity.free()
+	assert_equal(example.test_object_is_valid(object_of_questionable_validity), false)
+
 	# Test that ptrcalls from GDExtension to the engine are correctly encoding Object and RefCounted.
 	var new_node = Node.new()
 	example.test_add_child(new_node)
@@ -262,6 +270,9 @@ func _ready():
 	# Test that we can access an engine singleton.
 	assert_equal(example.test_use_engine_singleton(), OS.get_name())
 
+	assert_equal(example.test_get_internal(1), 1)
+	assert_equal(example.test_get_internal(true), -1)
+
 	# Test that notifications happen on both parent and child classes.
 	var example_child = $ExampleChild
 	assert_equal(example_child.get_value1(), 11)
@@ -275,6 +286,17 @@ func _ready():
 	assert_equal(library_path.begins_with("res://"), false)
 	assert_equal(library_path, ProjectSettings.globalize_path(library_path))
 	assert_equal(FileAccess.file_exists(library_path), true)
+
+	# Test that internal classes work as expected (at least for Godot 4.5+).
+	assert_equal(ClassDB.can_instantiate("ExampleInternal"), false)
+	assert_equal(ClassDB.instantiate("ExampleInternal"), null)
+	var internal_class = example.test_get_internal_class()
+	assert_equal(internal_class.get_the_answer(), 42)
+	assert_equal(internal_class.get_class(), "ExampleInternal")
+
+	# Test a class with a unicode name.
+	var przykład = ExamplePrzykład.new()
+	assert_equal(przykład.get_the_word(), "słowo to przykład")
 
 	exit_with_status()
 

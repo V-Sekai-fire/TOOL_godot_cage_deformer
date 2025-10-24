@@ -28,11 +28,11 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef GODOT_VARIANT_HPP
-#define GODOT_VARIANT_HPP
+#pragma once
 
 #include <godot_cpp/core/defs.hpp>
 
+#include <godot_cpp/variant/array.hpp>
 #include <godot_cpp/variant/builtin_types.hpp>
 #include <godot_cpp/variant/variant_size.hpp>
 
@@ -49,6 +49,7 @@ class Variant {
 
 	friend class GDExtensionBinding;
 	friend class MethodBind;
+	friend class VariantInternal;
 
 	static void init_bindings();
 
@@ -144,7 +145,7 @@ private:
 	static GDExtensionTypeFromVariantConstructorFunc to_type_constructor[VARIANT_MAX];
 
 public:
-	_FORCE_INLINE_ GDExtensionVariantPtr _native_ptr() const { return const_cast<uint8_t(*)[GODOT_CPP_VARIANT_SIZE]>(&opaque); }
+	_FORCE_INLINE_ GDExtensionVariantPtr _native_ptr() const { return const_cast<uint8_t (*)[GODOT_CPP_VARIANT_SIZE]>(&opaque); }
 	Variant();
 	Variant(std::nullptr_t n) :
 			Variant() {}
@@ -264,6 +265,8 @@ public:
 	operator PackedColorArray() const;
 	operator PackedVector4Array() const;
 
+	Object *get_validated_object() const;
+
 	Variant &operator=(const Variant &other);
 	Variant &operator=(Variant &&other);
 	bool operator==(const Variant &other) const;
@@ -327,8 +330,6 @@ public:
 	bool booleanize() const;
 	String stringify() const;
 	Variant duplicate(bool deep = false) const;
-	static void blend(const Variant &a, const Variant &b, float c, Variant &r_dst);
-	static void interpolate(const Variant &a, const Variant &b, float c, Variant &r_dst);
 
 	static String get_type_name(Variant::Type type);
 	static bool can_convert(Variant::Type from, Variant::Type to);
@@ -357,6 +358,66 @@ String vformat(const String &p_text, const VarArgs... p_args) {
 	return p_text % args_array;
 }
 
+Variant &Array::Iterator::operator*() const {
+	return *elem_ptr;
+}
+
+Variant *Array::Iterator::operator->() const {
+	return elem_ptr;
+}
+
+Array::Iterator &Array::Iterator::operator++() {
+	elem_ptr++;
+	return *this;
+}
+
+Array::Iterator &Array::Iterator::operator--() {
+	elem_ptr--;
+	return *this;
+}
+
+const Variant &Array::ConstIterator::operator*() const {
+	return *elem_ptr;
+}
+
+const Variant *Array::ConstIterator::operator->() const {
+	return elem_ptr;
+}
+
+Array::ConstIterator &Array::ConstIterator::operator++() {
+	elem_ptr++;
+	return *this;
+}
+
+Array::ConstIterator &Array::ConstIterator::operator--() {
+	elem_ptr--;
+	return *this;
+}
+
+Array::Iterator Array::begin() {
+	return Array::Iterator(ptrw());
+}
+Array::Iterator Array::end() {
+	return Array::Iterator(ptrw() + size());
+}
+
+Array::ConstIterator Array::begin() const {
+	return Array::ConstIterator(ptr());
+}
+Array::ConstIterator Array::end() const {
+	return Array::ConstIterator(ptr() + size());
+}
+
+Array::Array(std::initializer_list<Variant> p_init) :
+		Array() {
+	ERR_FAIL_COND(resize(p_init.size()) != 0);
+
+	size_t i = 0;
+	for (const Variant &element : p_init) {
+		set(i++, element);
+	}
+}
+
 #include <godot_cpp/variant/builtin_vararg_methods.hpp>
 
 #ifdef REAL_T_IS_DOUBLE
@@ -366,5 +427,3 @@ using PackedRealArray = PackedFloat32Array;
 #endif // REAL_T_IS_DOUBLE
 
 } // namespace godot
-
-#endif // GODOT_VARIANT_HPP

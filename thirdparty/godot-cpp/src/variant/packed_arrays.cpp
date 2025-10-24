@@ -232,8 +232,12 @@ void Array::set_typed(uint32_t p_type, const StringName &p_class_name, const Var
 	internal::gdextension_interface_array_set_typed((GDExtensionTypePtr *)this, (GDExtensionVariantType)p_type, (GDExtensionConstStringNamePtr)&p_class_name, (GDExtensionConstVariantPtr)&p_script);
 }
 
-void Array::_ref(const Array &p_from) const {
-	internal::gdextension_interface_array_ref((GDExtensionTypePtr *)this, (GDExtensionConstTypePtr *)&p_from);
+const Variant *Array::ptr() const {
+	return (const Variant *)internal::gdextension_interface_array_operator_index_const((GDExtensionTypePtr *)this, 0);
+}
+
+Variant *Array::ptrw() {
+	return (Variant *)internal::gdextension_interface_array_operator_index((GDExtensionTypePtr *)this, 0);
 }
 
 const Variant &Dictionary::operator[](const Variant &p_key) const {
@@ -244,6 +248,12 @@ const Variant &Dictionary::operator[](const Variant &p_key) const {
 Variant &Dictionary::operator[](const Variant &p_key) {
 	Variant *var = (Variant *)internal::gdextension_interface_dictionary_operator_index((GDExtensionTypePtr *)this, (GDExtensionVariantPtr)&p_key);
 	return *var;
+}
+
+void Dictionary::set_typed(uint32_t p_key_type, const StringName &p_key_class_name, const Variant &p_key_script, uint32_t p_value_type, const StringName &p_value_class_name, const Variant &p_value_script) {
+	// p_key_type/p_value_type are not Variant::Type so that header doesn't depend on <variant.hpp>.
+	internal::gdextension_interface_dictionary_set_typed((GDExtensionTypePtr *)this, (GDExtensionVariantType)p_key_type, (GDExtensionConstStringNamePtr)&p_key_class_name, (GDExtensionConstVariantPtr)&p_key_script,
+			(GDExtensionVariantType)p_value_type, (GDExtensionConstStringNamePtr)&p_value_class_name, (GDExtensionConstVariantPtr)&p_value_script);
 }
 
 } // namespace godot

@@ -28,8 +28,7 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef GODOT_REF_HPP
-#define GODOT_REF_HPP
+#pragma once
 
 #include <godot_cpp/core/defs.hpp>
 
@@ -71,6 +70,10 @@ class Ref {
 	}
 
 public:
+	static _FORCE_INLINE_ String get_class_static() {
+		return T::get_class_static();
+	}
+
 	_FORCE_INLINE_ bool operator==(const T *p_ptr) const {
 		return reference == p_ptr;
 	}
@@ -230,7 +233,9 @@ template <typename T>
 struct PtrToArg<Ref<T>> {
 	_FORCE_INLINE_ static Ref<T> convert(const void *p_ptr) {
 		GDExtensionRefPtr ref = (GDExtensionRefPtr)p_ptr;
-		ERR_FAIL_NULL_V(p_ptr, Ref<T>());
+		if (unlikely(!p_ptr)) {
+			return Ref<T>();
+		}
 		return Ref<T>(reinterpret_cast<T *>(godot::internal::get_object_instance_binding(godot::internal::gdextension_interface_ref_get_object(ref))));
 	}
 
@@ -254,7 +259,9 @@ struct PtrToArg<const Ref<T> &> {
 
 	_FORCE_INLINE_ static Ref<T> convert(const void *p_ptr) {
 		GDExtensionRefPtr ref = const_cast<GDExtensionRefPtr>(p_ptr);
-		ERR_FAIL_NULL_V(p_ptr, Ref<T>());
+		if (unlikely(!p_ptr)) {
+			return Ref<T>();
+		}
 		return Ref<T>(reinterpret_cast<T *>(godot::internal::get_object_instance_binding(godot::internal::gdextension_interface_ref_get_object(ref))));
 	}
 };
@@ -280,5 +287,3 @@ struct GetTypeInfo<const Ref<T> &, typename EnableIf<TypeInherits<RefCounted, T>
 };
 
 } // namespace godot
-
-#endif // GODOT_REF_HPP

@@ -36,9 +36,11 @@ def generate(env):
     if env["ios_simulator"]:
         sdk_name = "iphonesimulator"
         env.Append(CCFLAGS=["-mios-simulator-version-min=" + env["ios_min_version"]])
+        env.Append(LINKFLAGS=["-mios-simulator-version-min=" + env["ios_min_version"]])
     else:
         sdk_name = "iphoneos"
         env.Append(CCFLAGS=["-miphoneos-version-min=" + env["ios_min_version"]])
+        env.Append(LINKFLAGS=["-miphoneos-version-min=" + env["ios_min_version"]])
 
     if sys.platform == "darwin":
         if env["IOS_SDK_PATH"] == "":
@@ -96,5 +98,10 @@ def generate(env):
     env.Append(LINKFLAGS=["-isysroot", env["IOS_SDK_PATH"], "-F" + env["IOS_SDK_PATH"]])
 
     env.Append(CPPDEFINES=["IOS_ENABLED", "UNIX_ENABLED"])
+
+    # Refer to https://github.com/godotengine/godot/blob/master/platform/ios/detect.py:
+    # Disable by default as it makes linking in Xcode very slow.
+    if env["lto"] == "auto":
+        env["lto"] = "none"
 
     common_compiler_flags.generate(env)
